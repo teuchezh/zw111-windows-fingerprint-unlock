@@ -128,9 +128,9 @@ public partial class MainWindow
         steps.Enqueue(("check wheel", CheckWheeled));
         steps.Enqueue(("page LedPage (layout)", () => Nav.Navigate(typeof(LedPage))));
         steps.Enqueue(("check led rows 900", () => ((LedPage)FindPage()!).SelfCheck()));
-        // The CI screen is small, so force a wide window explicitly to exercise the one-line layout.
+        // Widen as far as the screen allows (the CI screen is small) and check again.
         steps.Enqueue(("wide window", () => { Width = 1400; }));
-        steps.Enqueue(("check led rows wide", () => ((LedPage)FindPage()!).SelfCheck(expectWide: true)));
+        steps.Enqueue(("check led rows wide", () => ((LedPage)FindPage()!).SelfCheck()));
         steps.Enqueue(("narrow window", () => { Width = 900; }));
         steps.Enqueue(("theme light", () => App.ApplyTheme("light")));
         steps.Enqueue(("page StatusPage", () => Nav.Navigate(typeof(StatusPage))));

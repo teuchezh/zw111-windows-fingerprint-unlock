@@ -42,7 +42,9 @@ public partial class LedPage : Page
     // Each effect row is a Card with a 3-column grid: icon | title+description | controls.
     // When the page is narrow the controls move to a second line under the title (see Relayout).
     readonly List<(Grid grid, FrameworkElement controls, FrameworkElement header, Card card)> _layout = new();
-    const double WideThreshold = 860;   // width of the effects list below which controls wrap
+    const double MinTitleWidth = 180;   // the title column must keep at least this much in the one-line layout
+    const double IconAndPadding = 40 + 32;
+    bool _wide;
 
     void BuildRows()
     {
@@ -86,9 +88,22 @@ public partial class LedPage : Page
         Relayout();
     }
 
+    /// <summary>Width the one-line layout needs: widest control panel + icon + padding + a readable title.</summary>
+    double WideNeed()
+    {
+        double controls = 0;
+        foreach (var (_, c, _, _) in _layout)
+        {
+            c.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            controls = Math.Max(controls, c.DesiredSize.Width);
+        }
+        return controls + IconAndPadding + MinTitleWidth;
+    }
+
     void Relayout()
     {
-        bool wide = EffectCards.ActualWidth == 0 || EffectCards.ActualWidth >= WideThreshold;
+        bool wide = EffectCards.ActualWidth == 0 || EffectCards.ActualWidth >= WideNeed();
+        _wide = wide;
         foreach (var (_, controls, _, _) in _layout)
         {
             if (wide) { Grid.SetRow(controls, 0); Grid.SetColumn(controls, 2); Grid.SetColumnSpan(controls, 1); controls.Margin = new Thickness(0); }
@@ -97,10 +112,11 @@ public partial class LedPage : Page
     }
 
     /// <summary>Smoke test: every control panel must fit inside its card.</summary>
-    public void SelfCheck(bool expectWide = false)
+    public void SelfCheck()
     {
-        if (expectWide && EffectCards.ActualWidth < WideThreshold)
-            throw new InvalidOperationException($"expected the wide layout, list width is {EffectCards.ActualWidth:F0}");
+        double need = WideNeed();
+        if (EffectCards.ActualWidth >= need != _wide)
+            throw new InvalidOperationException($"layout mode is stale: list {EffectCards.ActualWidth:F0}, needs {need:F0}, wide={_wide}");
         foreach (var (_, controls, header, card) in _layout)
         {
             var right = controls.TransformToAncestor(card).Transform(new Point(controls.ActualWidth, 0)).X;
@@ -108,7 +124,7 @@ public partial class LedPage : Page
                 throw new InvalidOperationException($"LED row overflows its card: controls end at {right:F0}, card width {card.ActualWidth:F0}");
             if (header.ActualWidth < 80) throw new InvalidOperationException($"LED row title squeezed to {header.ActualWidth:F0}px");
         }
-        App.SmokeLog($"led rows ok, list width {EffectCards.ActualWidth:F0}, wide={EffectCards.ActualWidth >= WideThreshold}");
+        App.SmokeLog($"led rows ok, list width {EffectCards.ActualWidth:F0}, one-line needs {need:F0}, wide={_wide}");
     }
 
     void ApplyProto(string? proto)
@@ -117,6 +133,7 @@ public partial class LedPage : Page
         ProtoText.Text = proto switch { "3C" => L.S("Led_Proto3C"), "35" => L.S("Led_Proto35"), _ => L.S("Led_ProtoNone") };
         // Only the 0x35 command has a speed parameter.
         foreach (var r in _rows) r.Speed.Visibility = proto == "35" ? Visibility.Visible : Visibility.Collapsed;
+        Relayout();
     }
 
     void Reload()
