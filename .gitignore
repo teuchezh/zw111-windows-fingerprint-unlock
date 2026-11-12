@@ -1,0 +1,13 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+# build intermediates
+*.o
+*.obj
+*.res
+windows/build/gui_res.o
+# editors / OS
+.vs/
+*.swp
+Thumbs.db
+.DS_Store

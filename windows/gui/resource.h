@@ -1,0 +1,25 @@
+#pragma once
+#define IDD_MAIN            100
+#define IDC_USER            101
+#define IDC_DOMAIN          102
+#define IDC_PASS            103
+#define IDC_PASS2           104
+#define IDC_FINGER          105
+#define IDC_PORT            106
+#define IDC_USBID           107
+#define IDC_DEBUG           108
+#define IDC_STATUS          110
+#define IDC_LOG             111
+#define IDC_BTN_STATUS      120
+#define IDC_BTN_PROVISION   121
+#define IDC_BTN_ENROLL      122
+#define IDC_ENROLL_ID       123
+#define IDC_BTN_DELETE      124
+#define IDC_BTN_TEST        125
+#define IDC_BTN_SETPW       126
+#define IDC_BTN_REGISTER    127
+#define IDC_BTN_UNREGISTER  128
+#define IDC_BTN_TOGGLE      129
+#define IDC_BTN_WIPE        130
+#define IDC_BTN_UNINSTALL   131
+#define IDC_HINT            132
