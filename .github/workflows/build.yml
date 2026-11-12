@@ -166,7 +166,7 @@ jobs:
           cp dist/firmware-yd_rp2040/firmware.uf2 "$R/firmware/firmware-yd_rp2040.uf2"
           cp dist/firmware-pico/firmware.uf2 "$R/firmware/firmware-pico.uf2"
           [ -f dist/firmware-esp32s3/firmware.bin ] && cp dist/firmware-esp32s3/firmware.bin "$R/firmware/firmware-esp32s3.bin" || true
-          cp README.md LICENSE "$R/"
+          cp README.md README.ru.md LICENSE "$R/"
           zip -r "$R.zip" "$R"
           ls -la "$R.zip"
       - uses: softprops/action-gh-release@v2

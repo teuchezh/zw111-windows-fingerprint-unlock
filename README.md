@@ -1,87 +1,83 @@
-# Вход в Windows по отпечатку пальца: ZW111 + RP2040 + свой Credential Provider
+# Windows fingerprint sign-in: ZW111 + RP2040 + a custom Credential Provider
 
 [![build](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml/badge.svg)](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml)
 
-🇬🇧 [English version](README.en.md)
+🇷🇺 [Русская версия](README.ru.md)
 
-Это «правильный» вариант: никакой эмуляции клавиатуры. На экране входа и блокировки
-появляется своя плитка «Отпечаток пальца». Когда сканер ZW111 узнаёт палец, Windows
-выполняет обычный интерактивный вход через LSA, как если бы вы ввели пароль.
+This is the "proper" way, no keyboard emulation. A "Fingerprint" tile appears on the Windows
+sign-in and lock screens. When the ZW111 sensor recognizes a finger, Windows performs a regular
+interactive logon through LSA, exactly as if you had typed the password.
 
 ```
  ┌──────────┐  UART 57600  ┌────────────┐  USB CDC (COM)  ┌──────────────────────────────┐
  │  ZW111   │◄────────────►│   RP2040   │◄───────────────►│ Windows: LogonUI             │
- │ шаблоны  │              │ K_dev,     │                 │   ZwCredProv.dll             │
- │ пальцев  │              │ K_auth     │                 │   K_pc, K_auth, E(пароль)    │
+ │ finger   │              │ K_dev,     │                 │   ZwCredProv.dll             │
+ │ templates│              │ K_auth     │                 │   K_pc, K_auth, E(password)  │
  └──────────┘              └────────────┘                 └──────────────────────────────┘
 ```
 
-## Состав
+## Layout
 
-| Путь | Что это |
+| Path | What it is |
 |---|---|
-| `firmware/` | Проект PlatformIO: прошивка для RP2040 (окружение `pico`) и ESP32-S3 (`esp32s3`). |
-| `windows/credprov/` | Credential Provider: COM-DLL `ZwCredProv.dll`, грузится в LogonUI. |
-| `windows/setup/` | `zwsetup.exe`: консольная утилита настройки, записи пальцев, проверки. |
-| `windows/ZwSetup/` | `ZwSetup.exe`: основное приложение настройки на .NET 8 + WPF-UI (стиль Fluent, навигация, тёмная и светлая темы, RU/EN). |
-| `windows/gui/` | `zwsetup-gui.exe`: простое Win32-окно, запасной вариант без .NET. |
-| `windows/common/` | Общий код: COM-порт, реестр + DPAPI, AES-GCM, протокол, таблица строк (RU/EN). |
-| `windows/build/` | Собранные x64 `ZwCredProv.dll`, `zwsetup.exe`, `zwsetup-gui.exe` (mingw-w64). `ZwSetup.exe` берите из артефактов CI или релиза. |
-| `tests/` | Проверка SHA-256/HMAC против Python `hashlib`. |
+| `firmware/` | PlatformIO project: firmware for RP2040 (`yd_rp2040`, `pico`) and ESP32-S3 (`esp32s3`). |
+| `windows/credprov/` | Credential Provider: COM DLL `ZwCredProv.dll`, loaded by LogonUI. |
+| `windows/setup/` | `zwsetup.exe`: console tool for provisioning, enrollment and testing. |
+| `windows/ZwSetup/` | `ZwSetup.exe`: the main setup app on .NET 8 + WPF-UI (Fluent style, navigation, dark/light themes, RU/EN). |
+| `windows/gui/` | `zwsetup-gui.exe`: plain Win32 window, fallback without .NET. |
+| `windows/common/` | Shared code: COM port, registry + DPAPI, AES-GCM, protocol, string table (RU/EN). |
+| `windows/build/` | Prebuilt x64 `ZwCredProv.dll`, `zwsetup.exe`, `zwsetup-gui.exe` (mingw-w64). |
+| `tests/` | SHA-256/HMAC check against Python `hashlib`. |
 
-## Модель безопасности
+## Security model
 
-Пароль никогда не лежит целиком ни в устройстве, ни в открытом виде на ПК.
+The password is never stored whole on the device, nor in clear text on the PC.
 
-- **Устройство** хранит два 32-байтных ключа: `K_dev` и `K_auth`.
-- **ПК** хранит в `HKLM\SOFTWARE\ZwCredProv` (читать могут только SYSTEM и администраторы)
-  DPAPI-блоб с `K_pc`, `K_auth` и паролем, зашифрованным AES-256-GCM ключом
+- **The device** holds two 32-byte keys: `K_dev` and `K_auth`.
+- **The PC** holds, in `HKLM\SOFTWARE\ZwCredProv` (readable only by SYSTEM and administrators),
+  a DPAPI blob with `K_pc`, `K_auth` and the password encrypted with AES-256-GCM under
   `K = SHA256("zwcp-key-v1" || K_dev || K_pc)`.
-- Устройство отдаёт `K_dev` только после того, как:
-  1. ПК доказал знание `K_auth`: ответил `HMAC(K_auth, "zwcp-host-v1" || nonce)` на свежий nonce устройства;
-  2. приложенный палец совпал с одним из записанных шаблонов.
-  `K_dev` передаётся замаскированным: `K_dev XOR HMAC(K_auth, "zwcp-wrap-v1" || nonce)`.
-- Запись ключей, запись и удаление пальцев, полная очистка требуют **зажатой кнопки BOOTSEL** (на YD-RP2040 также USR).
-  Программа на ПК не может незаметно перепрошить ключи или добавить чужой палец.
-- Что это даёт:
-  - украли только устройство: внутри нет пароля и нет `K_pc`, расшифровать нечего;
-  - украли только диск ПК: без `K_dev` пароль не расшифровать;
-  - вредоносная программа в сеансе пользователя: не прочитает ключ реестра (ACL), значит не сможет
-    пройти проверку `K_auth` и выманить `K_dev`; пока LogonUI держит COM-порт открытым,
-    порт ей вообще недоступен.
-- Чего это **не** даёт: тот, у кого одновременно есть устройство **и** права администратора/SYSTEM
-  на этом ПК, уже и так владеет машиной. Шаблоны пальцев хранятся внутри ZW111 и ПК не покидают.
+- The device releases `K_dev` only after:
+  1. the PC proves knowledge of `K_auth` by answering `HMAC(K_auth, "zwcp-host-v1" || nonce)` to a fresh device nonce;
+  2. the presented finger matches one of the enrolled templates.
+  `K_dev` is sent masked: `K_dev XOR HMAC(K_auth, "zwcp-wrap-v1" || nonce)`.
+- Writing keys, enrolling and deleting fingers, and wiping all require the **BOOTSEL/USR button to be held**.
+  A program on the PC cannot silently re-key the device or add someone else's finger.
+- What this buys you:
+  - device stolen alone: it holds neither the password nor `K_pc`, there is nothing to decrypt;
+  - PC disk stolen alone: without `K_dev` the password cannot be decrypted;
+  - malware in the user session: it cannot read the registry key (ACL), so it cannot pass the `K_auth`
+    check and extract `K_dev`; while LogonUI holds the COM port open, the port is unavailable to it anyway.
+- What it does **not** buy you: whoever has the device **and** administrator/SYSTEM rights on this PC
+  already owns the machine. Fingerprint templates stay inside the ZW111 and never leave it.
 
-## Железо
+## Hardware
 
-Проверено по вашим схемам: ZW111 с 6-пиновым разъёмом 1.0 мм и плата VCC-GND **YD-RP2040**.
+Verified against the ZW111 with a 6-pin 1.0 mm connector and the VCC-GND **YD-RP2040** board.
 
-| ZW111, пин разъёма | Сигнал | YD-RP2040 |
+| ZW111 connector pin | Signal | YD-RP2040 |
 |---|---|---|
-| 1 | V_Touch (3.3 В, питание сенсора касания) | 3V3 |
-| 2 | TouchOut | GP2 (не обязательно, прошивка его не использует) |
-| 3 | VCC (3.3 В) | 3V3 |
+| 1 | V_Touch (3.3 V, touch sensor supply) | 3V3 |
+| 2 | TouchOut | GP2 (optional, unused by the firmware) |
+| 3 | VCC (3.3 V) | 3V3 |
 | 4 | TX | GP1 (UART0 RX) |
 | 5 | RX | GP0 (UART0 TX) |
 | 6 | GND | GND |
 
-GP0 и GP1 на YD-RP2040 подписаны как USART0 TX/RX, это UART0, он же `Serial1` в Arduino-Pico.
-Все провода на 3.3 В, ничего не переводить на 5 В. На ZW111 стоит RGB-подсветка кольца,
-прошивка управляет ей командой 0x35 (дыхание синим во время ожидания пальца, красные вспышки при ошибке).
+Everything is 3.3 V. The ZW111 has an RGB ring LED; the firmware drives it (blue breathing while
+waiting for a finger, red flashes on error). On the YD-RP2040 both **BOOT** and **USR** (GP24) count
+as physical presence for privileged commands; USR is more convenient. A plain Pico wires the same
+way and uses BOOTSEL only. The ZW111 speaks the ZFM/R30x protocol, so the **Adafruit Fingerprint
+Sensor Library** is used (default module password `0x00000000`, 57600 baud).
 
-Кнопки YD-RP2040: **BOOT** и **USR** (GP24) обе принимаются как подтверждение физического присутствия
-для привилегированных команд. USR удобнее: BOOT при сбросе уводит плату в режим прошивки.
-Светодиод WS2812 на GP23 прошивка не трогает.
+## Prebuilt binaries and CI
 
-Другие платы: Pico подключается так же (3V3, GND, GP0, GP1), там подтверждение только кнопкой BOOTSEL.
-ZW111 работает по протоколу ZFM/R30x, используется библиотека **Adafruit Fingerprint Sensor Library**,
-пароль модуля по умолчанию `0x00000000`, скорость 57600.
+GitHub Actions builds the firmware (all environments), the Windows part (MSVC and mingw-w64) and
+the `ZwSetup.exe` app and runs the crypto checks (C++ and C#) on every push. Artifacts are attached to every run on the Actions tab.
+Pushing a tag like `v1.0` creates a release with an archive containing `ZwCredProv.dll`,
+`zwsetup.exe`, `zwsetup-gui.exe`, `ZwSetup.exe` and the firmware UF2 files.
 
-## Шаг 1. Прошивка (PlatformIO)
-
-Нужен PlatformIO (расширение VS Code или `pip install platformio`). Всё остальное
-(ядро Arduino-Pico от earlephilhower, библиотека Adafruit Fingerprint) PlatformIO скачает сам
-по `firmware/platformio.ini`.
+## Step 1. Firmware (PlatformIO)
 
 ```bash
 cd firmware
@@ -89,184 +85,132 @@ pio run -e yd_rp2040 -t upload
 pio device monitor
 ```
 
-Окружение `yd_rp2040` стоит по умолчанию, для обычного Pico используйте `-e pico`.
-Для первой прошивки зажмите BOOT и подключите USB: плата появится как диск, PlatformIO
-зальёт UF2 сам. В мониторе (115200) команда `HELLO` должна ответить `OK ZWCP 1 0 0`
-(версия 1, ключей нет, отпечатков 0).
+`yd_rp2040` is the default environment; use `-e pico` for a plain Pico. For the first flash hold
+BOOT while plugging in USB; if picotool cannot talk to the board (missing WinUSB driver), copy
+`.pio/build/yd_rp2040/firmware.uf2` onto the `RPI-RP2` drive by hand. In the monitor (115200)
+type `HELLO`, the answer must be `OK ZWCP 1 0 0`. Close the monitor afterwards, otherwise the port
+stays busy. Sensor pins are set via `ZW_SENSOR_TX` / `ZW_SENSOR_RX` build flags in `platformio.ini`.
 
-Пины сенсора задаются флагами `ZW_SENSOR_TX` / `ZW_SENSOR_RX` в `platformio.ini`.
-Другая плата RP2040 (Pico W, RP2040-Zero): смените `board`, пример закомментирован в ini.
+The `esp32s3` environment builds the same firmware for an ESP32-S3 (Serial over native USB, BOOT button
+on GPIO0, sensor on GPIO17/GPIO18); it compiles in CI but has not been tested on hardware.
 
-Окружение `esp32s3` собирает ту же прошивку для ESP32-S3: Serial идёт через нативный USB,
-вместо BOOTSEL используется кнопка BOOT (GPIO0), пины сенсора GPIO17/GPIO18. На железе не проверялось.
-При `zwsetup provision` для S3 укажите `--usbid VID_303A&PID_1001`.
+## Step 2. Building the Windows part
 
-В контейнере, где готовился проект, не было доступа к GitHub и реестру PlatformIO, поэтому
-`pio run` здесь не запускался. Код прошивки проверен компилятором на хосте с заглушками Arduino-API
-для обоих окружений; расхождения возможны только в версиях библиотек, не в логике.
-
-## Готовые сборки и CI
-
-GitHub Actions на каждый пуш собирает прошивку (PlatformIO, все окружения), Windows-часть
-(MSVC и mingw-w64), приложение `ZwSetup.exe` и гоняет проверку криптографии для C++ и C#. Готовые файлы лежат в артефактах каждого запуска
-на вкладке Actions. При пуше тега вида `v1.0` создаётся релиз с архивом, в котором `ZwCredProv.dll`,
-`zwsetup.exe`, `zwsetup-gui.exe`, `ZwSetup.exe` и UF2-файлы прошивки.
-
-```bash
-git tag v1.0
-git push origin v1.0
-```
-
-## Шаг 2. Сборка Windows-части
-
-Готовые бинарники уже лежат в `windows/build/`. Пересобрать можно так:
+Prebuilt binaries are in `windows/build/`. To rebuild:
 
 - **Visual Studio** (x64 Native Tools Command Prompt): `cd windows && build.bat`
-- **mingw-w64** (Linux или MSYS2): `cd windows && make`
+- **mingw-w64** (Linux or MSYS2): `cd windows && make`
 
-## Шаг 3. Настройка
+## Step 3. Setup
 
-### Вариант A: приложение `ZwSetup.exe` (рекомендуется)
+### Option A: the `ZwSetup.exe` app (recommended)
 
-Скачайте `ZwSetup.exe` из релиза или артефакта `windows-app` на вкладке Actions и положите рядом с
-`ZwCredProv.dll`. Это самодостаточный exe на .NET 8, ничего устанавливать не нужно. Интерфейс в стиле
-Fluent: слева разделы «Статус», «Настройка», «Отпечатки», «Журнал» и «Параметры», справа карточки.
+Download `ZwSetup.exe` from a release or the `windows-app` artifact on the Actions tab and put it next to
+`ZwCredProv.dll`. It is a self-contained .NET 8 executable, nothing to install. Fluent-style UI: sections
+"Status", "Setup", "Fingerprints", "Log" and "Settings" on the left, cards on the right.
 
-1. **Настройка**: имя пользователя, домен, пароль дважды, карточка «1. Настроить устройство и пароль».
-   Аккаунт Microsoft определяется автоматически. По запросу зажмите USR на плате и нажмите OK.
-2. **Отпечатки**: слот и карточка «2. Записать палец», снова с зажатой USR.
-3. **Настройка** → «3. Проверить»: приложите палец, программа расшифрует пароль и проверит его через LogonUser.
-4. **Статус** → «Зарегистрировать DLL», затем Win+L.
+1. **Setup**: user name, domain, password twice, card "1. Set up device and password". Microsoft accounts
+   are detected automatically. Hold USR on the board when asked and press OK.
+2. **Fingerprints**: slot and card "2. Enroll finger", again with USR held.
+3. **Setup** → "3. Test": place a finger, the app decrypts the password and verifies it with LogonUser.
+4. **Status** → "Register DLL", then Win+L.
 
-В «Параметрах» язык (применяется и к плитке), тема окна, отладочный лог и удаление настроек.
-Переключатель «Плитка на экране входа» на странице «Статус» временно скрывает плитку без удаления настроек.
+"Settings" holds the language (also applied to the tile), window theme, debug log and settings removal.
+The "Sign-in tile" switch on the Status page hides the tile temporarily without removing the settings.
 
-Пересобрать: `dotnet publish windows/ZwSetup/ZwSetup.App -c Release` (нужен .NET 8 SDK; проект публикуется
-как один самодостаточный файл для x64).
+Rebuild: `dotnet publish windows/ZwSetup/ZwSetup.App -c Release` (.NET 8 SDK; published as a single
+self-contained x64 file).
 
-### Вариант B: окно `zwsetup-gui.exe` (без .NET)
+### Option B: the `zwsetup-gui.exe` window (no .NET)
 
-Запустите `windows\build\zwsetup-gui.exe` (права администратора запросит сам, `ZwCredProv.dll`
-должна лежать рядом). Дальше кнопки по порядку:
+Run `windows\build\zwsetup-gui.exe` (it requests administrator rights; `ZwCredProv.dll` must be next
+to it). Then the buttons in order:
 
-1. Заполните имя пользователя, домен (`.` для локальной учётной записи, `MicrosoftAccount` для аккаунта Microsoft),
-   пароль дважды. Нажмите **«1. Настроить устройство и пароль»**, по запросу зажмите USR на плате и нажмите OK.
-2. **«2. Записать палец в слот»** (слот 1), снова с зажатой USR, затем следуйте подсказкам в журнале.
-3. **«3. Проверить»**: приложите палец, программа расшифрует пароль и проверит его через LogonUser.
-4. **«Зарегистрировать DLL»**: копирует `ZwCredProv.dll` в System32 и регистрирует провайдер.
-5. Win+L, на экране блокировки плитка «Отпечаток пальца».
+1. Fill in the user name, domain (`.` for a local account, `MicrosoftAccount` for a Microsoft account),
+   the password twice. Click **"1. Set up device and password"**, hold USR on the board when asked, press OK.
+2. **"2. Enroll finger into slot"** (slot 1), again with USR held, then follow the log.
+3. **"3. Test"**: place your finger, the program decrypts the password and verifies it with LogonUser.
+4. **"Register DLL"**: copies `ZwCredProv.dll` to System32 and registers the provider.
+5. Win+L: the "Fingerprint" tile is on the lock screen.
 
-«Обновить статус» показывает все COM-порты с USB-идентификаторами и состояние устройства.
-Если порт занят монитором PlatformIO, статус так и скажет.
-Выпадающий список языка переключает окно, консольную утилиту и плитку на экране входа
-(сохраняется как `Lang` в реестре: `auto`, `ru` или `en`; `auto` следует языку интерфейса Windows).
+"Refresh status" lists all COM ports with their USB ids and the device state. If the port is held
+by the PlatformIO monitor, the status says so. The language selector switches the window, the console
+tool and the sign-in tile (saved as `Lang` in the registry: `auto`, `ru` or `en`).
 
-### Вариант C: консоль `zwsetup.exe` (PowerShell от администратора)
+### Option C: console `zwsetup.exe` (PowerShell as administrator)
 
 ```bat
 cd windows\build
 copy ZwCredProv.dll C:\Windows\System32\
 regsvr32 C:\Windows\System32\ZwCredProv.dll
+.\zwsetup.exe provision --user YourName
+.\zwsetup.exe enroll --id 1
+.\zwsetup.exe test
 ```
 
-Полная настройка: новые ключи, прошивка их в устройство, пароль, запись в реестр.
-Когда попросят, зажмите кнопку USR (или BOOT) на плате и нажмите Enter:
+Options: `--domain MicrosoftAccount --user name@outlook.com` for a Microsoft account, `--domain CORP`
+for a domain account, `--port COM7` instead of USB-id autodetection, `--usbid "VID_2E8A&PID_800A"`,
+`--finger 1` to allow only slot 1, `--debug` for a log at `C:\ProgramData\ZwCredProv\zwcredprov.log`,
+`--lang en`. Other commands: `status`, `set-password`, `delete --id N`, `disable` / `enable`,
+`lang auto|ru|en`, `wipe`, `uninstall`.
 
-```bat
-zwsetup provision --user ВашеИмя
-```
+## Ring light
 
-Для аккаунта Microsoft: `zwsetup provision --user name@outlook.com --domain MicrosoftAccount`.
-Для доменного: `--domain CORP`. Опции: `--port COM7` вместо автопоиска по USB ID,
-`--finger 1` чтобы разрешить вход только пальцу из слота 1, `--debug` для лога
-`C:\ProgramData\ZwCredProv\zwcredprov.log`.
+The ring lights up only while Windows really waits for a finger: on the sign-in or lock screen and during a
+test or enrollment. Once you are signed in, the board turns the ring off by itself because Windows closed the
+COM port. The firmware detects the light command on its own: `0x3C` on the ZW111 or `0x35` on R503 sensors.
 
-Записать палец (зажав USR или BOOT):
+The **"Ring light"** page in `ZwSetup.exe` sets the effect for each event: waiting for a finger, finger
+recognized, error, enrolling, idle. Each has a mode (breathing, flashing, on, off, fade in or out), one of seven
+colours and a repeat count. "Preview" plays the effect for 3 seconds without saving. Settings live on the board.
 
-```bat
-zwsetup enroll --id 1
-```
+"Light while waiting for at most" turns the ring off after that many seconds of waiting, for example when the
+lock screen stays up all night. A finger is still accepted, and a wrong finger turns the light back on.
 
-Проверить всю цепочку, не блокируя экран:
+## Microsoft accounts and PIN sign-in
 
-```bat
-zwsetup test
-```
+If the sign-in screen offers a PIN and shows your full name, it is most likely a Microsoft account.
+The tools detect a local account linked to a Microsoft account and fill in `MicrosoftAccount` and the
+e-mail automatically. Then:
 
-`test` проходит рукопожатие, ждёт палец, расшифровывает пароль и проверяет его через `LogonUser`.
-Если здесь всё «OK», нажмите Win+L: на экране блокировки появится плитка «Отпечаток пальца»,
-приложите палец, вход произойдёт сам.
+1. Use the **Microsoft account password**, not the PIN.
+2. In Windows 11 open Settings → Accounts → Sign-in options and **turn off**
+   "For improved security, only allow Windows Hello sign-in for Microsoft accounts on this device".
+3. If passwordless sign-in is enabled for the Microsoft account (account.microsoft.com → Security),
+   the account has no password at all and password logon is impossible. Disable passwordless mode
+   or use a local account.
 
-Прочие команды: `status`, `set-password` (после смены пароля Windows), `delete --id N`,
-`disable` / `enable` (скрыть плитку, не удаляя настройки), `lang auto|ru|en`, `wipe`, `uninstall`.
+Error `0xC000006D` on the tile means Windows rejected the user name/password pair: check the points
+above and then use "Change password" in the window (or `zwsetup set-password`).
 
-Снять полностью:
+## How it works
 
-```bat
-zwsetup uninstall
-regsvr32 /u C:\Windows\System32\ZwCredProv.dll
-```
+1. LogonUI loads `ZwCredProv.dll` for `CPUS_LOGON` and `CPUS_UNLOCK_WORKSTATION`. The provider reads
+   the configuration and, through `ICredentialProviderSetUserArray`, checks that the configured user is
+   actually on the screen (on the lock screen that is the locked user only).
+2. A worker thread finds the COM port by USB id (`VID_2E8A`), sends `HELLO`, `NONCE`, `AUTH`.
+3. The device turns on its LED and waits for a finger. On a match it sends `MATCH <id> <conf> <wrapped K_dev>`.
+4. The provider unmasks `K_dev`, derives `K`, decrypts the password and calls `CredentialsChanged`.
+   LogonUI re-queries `GetCredentialCount`, gets "auto-logon with tile 0" and calls `GetSerialization`.
+5. `GetSerialization` builds a `KERB_INTERACTIVE_UNLOCK_LOGON` (password protected with `CredProtect`)
+   for the `Negotiate` package. The password in memory is wiped right after packing.
+6. If LSA rejects the logon (`ReportResult` with an error), the tile shows the error and starts a new handshake.
 
-## Как это работает внутри
+The device protocol is documented at the top of `firmware/src/main.cpp`.
 
-1. LogonUI загружает `ZwCredProv.dll` для сценариев `CPUS_LOGON` и `CPUS_UNLOCK_WORKSTATION`.
-   Провайдер читает конфигурацию и через `ICredentialProviderSetUserArray` проверяет, что настроенный
-   пользователь вообще есть на экране (на экране блокировки это только заблокированный пользователь).
-2. Рабочий поток ищет COM-порт по USB ID платы (производитель `VID_2E8A`, у YD-RP2040 полный id `VID_2E8A&PID_800A`), шлёт `HELLO`, `NONCE`, `AUTH`.
-3. Устройство включает подсветку и ждёт палец. При совпадении шлёт `MATCH <id> <conf> <wrapped K_dev>`.
-4. Провайдер снимает маску, вычисляет `K`, расшифровывает пароль, вызывает `CredentialsChanged`.
-   LogonUI переспрашивает `GetCredentialCount`, получает «автовход плиткой 0» и вызывает `GetSerialization`.
-5. `GetSerialization` собирает `KERB_INTERACTIVE_UNLOCK_LOGON` (пароль защищён `CredProtect`),
-   пакет аутентификации `Negotiate`. Пароль в памяти затирается сразу после упаковки.
-6. Если LSA отверг вход (`ReportResult` с ошибкой), плитка показывает код ошибки и запускает новое рукопожатие.
+## Troubleshooting
 
-Протокол устройства описан в шапке `firmware/src/main.cpp`.
-
-## Подсветка кольца
-
-Кольцо светится только пока Windows действительно ждёт палец: на экране входа или блокировки и во время
-проверки или записи пальца. Когда вы вошли в систему, плата гасит кольцо сама: она видит, что Windows закрыла
-COM-порт. Прошивка сама определяет команду подсветки: `0x3C` у ZW111 или `0x35` у сканеров R503.
-
-Страница **«Подсветка»** в `ZwSetup.exe` настраивает эффект для каждого события: ожидание пальца, палец
-распознан, ошибка, запись пальца, простой. Для каждого задаются режим (дыхание, мигание, горит, выключено,
-плавно зажечь или погасить), цвет из семи и число повторов. Кнопка «Показать» проигрывает эффект 3 секунды
-без сохранения. Настройки хранятся на плате.
-
-«Подсвечивать ожидание не дольше» гасит кольцо через заданное число секунд ожидания, например если экран
-блокировки висит всю ночь. Палец при этом по-прежнему принимается, а неверный палец снова включает подсветку.
-
-## Учётная запись Microsoft и вход по PIN
-
-Если на экране входа Windows предлагает PIN и показывает полное имя, скорее всего это аккаунт Microsoft.
-Тогда:
-
-1. В настройке укажите домен `MicrosoftAccount`, а вместо имени пользователя почту аккаунта
-   (`name@outlook.com`). Пароль нужен от аккаунта Microsoft, а **не PIN**.
-2. В Windows 11 откройте Параметры → Учётные записи → Варианты входа и **выключите** переключатель
-   «Для повышения безопасности разрешите вход Windows Hello только для учётных записей Майкрософт».
-   Пока он включён, Windows отвергает любой вход по паролю, в том числе от провайдера.
-3. Если в аккаунте Microsoft включён «беспарольный вход» (account.microsoft.com → Безопасность),
-   пароля у аккаунта вообще нет, и вход по паролю невозможен. Отключите беспарольный режим или
-   используйте локальную учётную запись.
-
-Ошибка `0xC000006D` на плитке означает, что Windows не приняла пару имя/пароль: проверьте пункты выше
-и затем «Сменить пароль» в окне настройки (или `zwsetup set-password`).
-
-## Отладка
-
-- Плитки нет: `zwsetup status` покажет, зарегистрирована ли DLL и найдено ли устройство;
-  убедитесь, что учётная запись из `--user` есть на экране входа.
-- Включите `--debug` при `provision` (или `Debug=1` в реестре) и смотрите
+- No tile: `zwsetup status` shows whether the DLL is registered and the device is found; make sure the
+  configured account is on the sign-in screen.
+- Enable the debug log (checkbox in the window, or `Debug=1` in the registry) and read
   `C:\ProgramData\ZwCredProv\zwcredprov.log`.
-- Credential Provider можно отлаживать без перезагрузки: `Win+L` перезапускает LogonUI,
-  но DLL остаётся загруженной в `LogonUI.exe` до его завершения; для замены DLL достаточно
-  выйти из системы или перезагрузиться.
-- Запасной вход всегда остаётся: стандартная плитка с паролем никуда не исчезает.
+- The DLL stays loaded in `LogonUI.exe`; to replace it, "Register DLL" schedules the copy for the next
+  reboot when the file is busy.
+- The standard password/PIN tile never goes away, so you cannot lock yourself out.
 
-## ESP32-S3 вместо RP2040
+## ESP32-S3 instead of RP2040
 
-Используйте окружение `esp32s3` (см. Шаг 1). Платформенные различия вынесены в блок
-«platform glue» в начале `firmware/src/main.cpp`: источник случайных чисел, кнопка физического
-присутствия и назначение пинов UART. Бонус S3: аппаратное шифрование флеша защищает `K_dev`
-от чтения по USB; на RP2040 такой защиты нет, поэтому там особенно важна схема с разделённым секретом.
+Use the `esp32s3` environment. Platform differences live in the "platform glue" block at the top of
+`firmware/src/main.cpp`: random source, physical-presence button and UART pins. Bonus on the S3:
+flash encryption protects `K_dev` from being read over USB; the RP2040 has no such protection, which
+is why the split-secret scheme matters there.
