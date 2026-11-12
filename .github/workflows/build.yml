@@ -70,6 +70,17 @@ jobs:
         working-directory: windows
         shell: cmd
         run: build.bat
+      - name: Check that UTF-8 source strings survived compilation
+        shell: pwsh
+        run: |
+          $checks = @{ "windows/build/zwsetup-gui.exe" = "Порядок"; "windows/build/zwsetup.exe" = "Конфигурация"; "windows/build/ZwCredProv.dll" = "Отпечаток пальца" }
+          foreach ($f in $checks.Keys) {
+            $bytes = [IO.File]::ReadAllBytes($f)
+            $hex = [BitConverter]::ToString($bytes) -replace '-'
+            $needle = [BitConverter]::ToString([Text.Encoding]::Unicode.GetBytes($checks[$f])) -replace '-'
+            if ($hex -notmatch $needle) { Write-Error "UTF-16 string '$($checks[$f])' not found in $f (source read in wrong code page?)"; exit 1 }
+            Write-Host "OK: $f"
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-msvc
