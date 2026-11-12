@@ -33,7 +33,8 @@
                 <Setter Property="Margin" Value="0,0,0,16" />
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             </Style>
-            <Style x:Key="Card" TargetType="ui:CardControl">
+            <!-- BasedOn keeps the WPF-UI template; without it the card renders as bare content. -->
+            <Style x:Key="Card" TargetType="ui:CardControl" BasedOn="{StaticResource {x:Type ui:CardControl}}">
                 <Setter Property="Margin" Value="0,0,0,4" />
                 <Setter Property="Padding" Value="16,12" />
             </Style>
