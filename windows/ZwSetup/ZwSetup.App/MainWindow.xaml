@@ -9,7 +9,8 @@
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica"
         WindowCornerPreference="Round"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/app.ico">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -19,7 +20,7 @@
 
         <ui:TitleBar Grid.Row="0" Title="{Binding [AppTitle], Source={x:Static core:L.I}}">
             <ui:TitleBar.Icon>
-                <ui:SymbolIcon Symbol="Fingerprint24" />
+                <ui:ImageIcon Source="pack://application:,,,/Assets/icon-64.png" Width="16" Height="16" />
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 

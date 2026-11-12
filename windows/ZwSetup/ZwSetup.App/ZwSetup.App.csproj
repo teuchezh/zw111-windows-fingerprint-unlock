@@ -9,6 +9,7 @@
     <AssemblyName>ZwSetup</AssemblyName>
     <RootNamespace>ZwSetup.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
@@ -20,6 +21,10 @@
     <Version>1.0.0</Version>
     <Product>ZwCredProv Setup</Product>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\icon-64.png" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.0.5" />
     <ProjectReference Include="../ZwSetup.Core/ZwSetup.Core.csproj" />

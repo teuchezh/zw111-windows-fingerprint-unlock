@@ -3,6 +3,7 @@
 #include "resource.h"
 
 1 RT_MANIFEST "zwsetup-gui.manifest"
+1 ICON "../assets/app.ico"
 
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 

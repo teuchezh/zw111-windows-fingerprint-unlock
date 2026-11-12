@@ -1,3 +1,5 @@
+<img src="windows/assets/icon-256.png" width="96" align="right" alt="">
+
 # Вход в Windows по отпечатку пальца: ZW111 + RP2040 + свой Credential Provider
 
 [![build](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml/badge.svg)](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml)

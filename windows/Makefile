@@ -17,10 +17,12 @@ build:
 build/ZwCredProv.dll: $(CP_SRC) $(COMMON) credprov/ZwCredProv.def | build
 	$(CXX) $(CXXFLAGS) -shared -o $@ $(CP_SRC) $(COMMON) credprov/ZwCredProv.def $(LDFLAGS) $(LIBS)
 
-build/zwsetup.exe: setup/zwsetup.cpp $(COMMON) | build
-	$(CXX) $(CXXFLAGS) -o $@ setup/zwsetup.cpp $(COMMON) $(LDFLAGS) $(LIBS)
+build/zwsetup.exe: setup/zwsetup.cpp setup/zwsetup.rc assets/app.ico $(COMMON) | build
+	$(WINDRES) -I setup -o build/cli_res.o setup/zwsetup.rc
+	$(CXX) $(CXXFLAGS) -o $@ setup/zwsetup.cpp $(COMMON) build/cli_res.o $(LDFLAGS) $(LIBS)
+	rm -f build/cli_res.o
 
-build/zwsetup-gui.exe: gui/main.cpp gui/zwsetup-gui.rc gui/zwsetup-gui.manifest gui/resource.h $(COMMON) | build
+build/zwsetup-gui.exe: gui/main.cpp gui/zwsetup-gui.rc gui/zwsetup-gui.manifest gui/resource.h assets/app.ico $(COMMON) | build
 	$(WINDRES) -c 65001 -I gui -o build/gui_res.o gui/zwsetup-gui.rc
 	$(CXX) $(CXXFLAGS) -mwindows -o $@ gui/main.cpp $(COMMON) build/gui_res.o $(LDFLAGS) $(LIBS) -lcomctl32 -luser32
 	rm -f build/gui_res.o
