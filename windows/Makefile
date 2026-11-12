@@ -4,7 +4,7 @@ CXX      = x86_64-w64-mingw32-g++
 WINDRES  = x86_64-w64-mingw32-windres
 CXXFLAGS ?= -O2 -std=c++17 -municode -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0A00 -Wall -Wno-unknown-pragmas
 LDFLAGS  ?= -static -static-libgcc -static-libstdc++
-LIBS      = -lole32 -loleaut32 -luuid -lsecur32 -ladvapi32 -lcrypt32 -lbcrypt -lsetupapi -lshlwapi -lgdi32 -lshell32 -lcredui
+LIBS      = -lole32 -loleaut32 -luuid -lsecur32 -ladvapi32 -lcrypt32 -lbcrypt -lsetupapi -lshlwapi -lgdi32 -lshell32 -lcredui -lnetapi32
 
 COMMON   = common/serial.cpp common/config.cpp common/proto.cpp
 CP_SRC   = credprov/Dll.cpp credprov/Provider.cpp credprov/Credential.cpp credprov/helpers.cpp

@@ -46,6 +46,9 @@ bool AesGcmDecrypt(const uint8_t key[32], const uint8_t iv[12], const std::vecto
 bool SealPassword(Secrets& s, const uint8_t kdev[32], const std::wstring& password);
 bool OpenPassword(const Secrets& s, const uint8_t kdev[32], std::wstring& password);
 
+// If the local account `localUser` is linked to a Microsoft account, returns true and its e-mail.
+bool LinkedMicrosoftAccount(const std::wstring& localUser, std::wstring& email);
+
 // Resolve the effective logon domain ("." -> computer name).
 std::wstring EffectiveDomain(const Config& cfg);
 

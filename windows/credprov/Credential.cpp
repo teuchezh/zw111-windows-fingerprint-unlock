@@ -152,7 +152,10 @@ IFACEMETHODIMP ZwCredential::ReportResult(NTSTATUS ntsStatus, NTSTATUS ntsSubsta
     }
     if (ntsStatus != 0) {
         wchar_t msg[160];
-        StringCchPrintfW(msg, 160, L"Вход не выполнен (0x%08X). Пароль в хранилище устарел? Запустите zwsetup set-password.", (unsigned)ntsStatus);
+        if ((unsigned)ntsStatus == 0xC000006Du)
+            StringCchPrintfW(msg, 160, L"Windows не приняла имя или пароль (0xC000006D). Проверьте учётную запись и пароль в zwsetup-gui, кнопка «3. Проверить».");
+        else
+            StringCchPrintfW(msg, 160, L"Вход не выполнен (0x%08X). Проверьте настройку в zwsetup-gui, кнопка «3. Проверить».", (unsigned)ntsStatus);
         SHStrDupW(msg, ppwszOptionalStatusText);
         *pcpsiOptionalStatusIcon = CPSI_ERROR;
         SetStatus(L"Приложите палец к сканеру", false);

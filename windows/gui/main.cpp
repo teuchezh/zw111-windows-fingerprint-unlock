@@ -139,6 +139,15 @@ static void OpProvision(std::shared_ptr<Form> f) {
     if (!LookupAccountNameW(nullptr, qualified.c_str(), sid, &cb, dom, &cd, &use)) {
         if (!Ask(L"Учётная запись " + qualified + L" не найдена.\nДля аккаунта Microsoft укажите домен MicrosoftAccount и почту как имя.\nПродолжить всё равно?", MB_OKCANCEL | MB_ICONWARNING)) return;
     } else LogW(L"Учётная запись: " + qualified);
+    std::wstring email;
+    if (cfg.domain == L"." && LinkedMicrosoftAccount(cfg.user, email)) {
+        if (Ask(L"Локальная запись " + cfg.user + L" привязана к аккаунту Microsoft " + email +
+                L".\nДля входа Windows требует имя в виде MicrosoftAccount\\" + email + L" и пароль аккаунта Microsoft (не PIN).\n\n"
+                L"Использовать эти домен и имя? (Отмена: оставить как есть)")) {
+            cfg.domain = L"MicrosoftAccount"; cfg.user = email;
+            LogW(L"Используется учётная запись MicrosoftAccount\\" + email);
+        }
+    }
     if (_wcsicmp(cfg.domain.c_str(), L"MicrosoftAccount") == 0 && cfg.user.find(L'@') == std::wstring::npos) {
         if (!Ask(L"Для домена MicrosoftAccount имя пользователя должно быть почтой аккаунта (name@outlook.com).\nПродолжить всё равно?", MB_OKCANCEL | MB_ICONWARNING)) return;
     }
@@ -210,7 +219,12 @@ static void OpTest(std::shared_ptr<Form> f) {
         if (!DllRegistered()) LogW(L"Но DLL не зарегистрирована: нажмите «Зарегистрировать DLL».");
     } else {
         DWORD e = GetLastError();
-        LogW(L"LogonUser не удался, ошибка " + std::to_wstring(e) + L". Для локальной учётной записи это неверный пароль (используйте «Сменить пароль»); для аккаунта Microsoft проверьте на экране блокировки.");
+        LogW(L"LogonUser не удался, ошибка " + std::to_wstring(e) + L" (1326 = неверные имя или пароль). Windows отвергнет эту пару и на экране входа.");
+        std::wstring email;
+        if (cfg.domain == L"." && LinkedMicrosoftAccount(cfg.user, email))
+            LogW(L"Запись " + cfg.user + L" привязана к аккаунту Microsoft " + email + L": повторите шаг 1 с доменом MicrosoftAccount, именем " + email + L" и паролем аккаунта Microsoft.");
+        else
+            LogW(L"Проверьте пароль и повторите «Сменить пароль». Для аккаунта Microsoft в его настройках безопасности должен быть выключен беспарольный вход.");
     }
     Zero(pw);
 }
@@ -315,9 +329,16 @@ static void LoadFormFromConfig() {
         SetDlgItemInt(g_hwnd, IDC_FINGER, cfg.fingerId, FALSE);
         CheckDlgButton(g_hwnd, IDC_DEBUG, cfg.debug ? BST_CHECKED : BST_UNCHECKED);
     } else {
-        wchar_t name[256]; DWORD n = 256;
-        if (GetUserNameW(name, &n)) SetDlgItemTextW(g_hwnd, IDC_USER, name);
-        SetDlgItemTextW(g_hwnd, IDC_DOMAIN, L".");
+        wchar_t name[256]; DWORD n = 256; std::wstring email;
+        if (GetUserNameW(name, &n)) {
+            if (LinkedMicrosoftAccount(name, email)) {
+                SetDlgItemTextW(g_hwnd, IDC_USER, email.c_str());
+                SetDlgItemTextW(g_hwnd, IDC_DOMAIN, L"MicrosoftAccount");
+            } else {
+                SetDlgItemTextW(g_hwnd, IDC_USER, name);
+                SetDlgItemTextW(g_hwnd, IDC_DOMAIN, L".");
+            }
+        } else SetDlgItemTextW(g_hwnd, IDC_DOMAIN, L".");
         SetDlgItemInt(g_hwnd, IDC_FINGER, 0, FALSE);
     }
     SetDlgItemTextW(g_hwnd, IDC_PORT, cfg.port.c_str());
@@ -331,6 +352,8 @@ static INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         g_hwnd = hwnd;
         LoadFormFromConfig();
         AppendLog(L"Порядок: 1) настроить устройство и пароль, 2) записать палец, 3) проверить, затем «Зарегистрировать DLL» и Win+L.");
+        if (GetText(IDC_DOMAIN) == L"MicrosoftAccount")
+            AppendLog(L"Обнаружен аккаунт Microsoft: имя и домен подставлены. Пароль нужен от аккаунта Microsoft, не PIN.");
         RunOp(OpStatus);
         return TRUE;
     case WM_APP_LOG: { std::unique_ptr<std::wstring> s((std::wstring*)lParam); AppendLog(*s); return TRUE; }

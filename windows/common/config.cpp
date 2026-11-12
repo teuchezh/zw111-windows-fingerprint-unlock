@@ -4,6 +4,7 @@
 #include <dpapi.h>
 #include <sddl.h>
 #include <shlobj.h>
+#include <lm.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -216,6 +217,16 @@ bool OpenPassword(const Secrets& s, const uint8_t kdev[32], std::wstring& passwo
     password.assign((const wchar_t*)plain.data(), plain.size() / 2);
     if (!plain.empty()) SecureZeroMemory(plain.data(), plain.size());
     return true;
+}
+
+bool LinkedMicrosoftAccount(const std::wstring& localUser, std::wstring& email) {
+    LPBYTE buf = nullptr;
+    if (NetUserGetInfo(nullptr, localUser.c_str(), 24, &buf) != NERR_Success || !buf) return false;
+    USER_INFO_24* ui = (USER_INFO_24*)buf;
+    bool linked = ui->usri24_internet_identity && ui->usri24_internet_principal_name && *ui->usri24_internet_principal_name;
+    if (linked) email = ui->usri24_internet_principal_name;
+    NetApiBufferFree(buf);
+    return linked;
 }
 
 std::wstring EffectiveDomain(const Config& cfg) {

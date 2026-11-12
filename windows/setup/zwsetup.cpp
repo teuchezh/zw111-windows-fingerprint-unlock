@@ -106,6 +106,11 @@ static int CmdProvision(int argc, wchar_t** argv) {
     BYTE sid[SECURITY_MAX_SID_SIZE]; DWORD cb = sizeof(sid); wchar_t dom[256]; DWORD cd = 256; SID_NAME_USE use;
     if (!LookupAccountNameW(nullptr, qualified.c_str(), sid, &cb, dom, &cd, &use))
         wprintf(L"Предупреждение: учётная запись %ls не найдена через LookupAccountName. Для аккаунта Microsoft используйте --domain MicrosoftAccount --user почта.\n", qualified.c_str());
+    std::wstring email;
+    if (cfg.domain == L"." && LinkedMicrosoftAccount(cfg.user, email)) {
+        wprintf(L"Запись %ls привязана к аккаунту Microsoft %ls. Использую MicrosoftAccount\\%ls (пароль нужен от аккаунта Microsoft, не PIN).\n", cfg.user.c_str(), email.c_str(), email.c_str());
+        cfg.domain = L"MicrosoftAccount"; cfg.user = email;
+    }
     if (_wcsicmp(cfg.domain.c_str(), L"MicrosoftAccount") == 0 && cfg.user.find(L'@') == std::wstring::npos)
         wprintf(L"Предупреждение: для домена MicrosoftAccount имя пользователя должно быть почтой аккаунта (name@outlook.com).\n");
     else wprintf(L"Учётная запись: %ls\n", qualified.c_str());
