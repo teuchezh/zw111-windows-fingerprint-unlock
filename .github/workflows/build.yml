@@ -130,10 +130,11 @@ jobs:
         run: dotnet publish windows/ZwSetup/ZwSetup.App -c Release --nologo -v q
       - name: Smoke-run the app (opens every page, both languages, both themes)
         shell: pwsh
-        timeout-minutes: 3
+        timeout-minutes: 2
         run: |
           $exe = "windows/ZwSetup/ZwSetup.App/bin/Release/net8.0-windows/win-x64/publish/ZwSetup.exe"
           $p = Start-Process -FilePath $exe -ArgumentList "--smoke" -PassThru -Wait -NoNewWindow
+          if (Test-Path smoke.log) { Get-Content smoke.log } else { Write-Host "(no smoke.log written)" }
           if ($p.ExitCode -ne 0) { Write-Error "ZwSetup.exe --smoke exited with $($p.ExitCode)"; exit 1 }
           Write-Host "smoke ok"
       - uses: actions/upload-artifact@v5
