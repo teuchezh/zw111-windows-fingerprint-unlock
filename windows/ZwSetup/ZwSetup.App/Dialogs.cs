@@ -1,41 +1,38 @@
 using System.Windows;
+using System.Windows.Controls;
 using Wpf.Ui.Controls;
 using ZwSetup.Core;
 
 namespace ZwSetup.App;
 
-/// <summary>Small modal dialogs built on FluentWindow (synchronous ShowDialog, safe to call via Dispatcher.Invoke).</summary>
+/// <summary>Fluent in-window dialogs (WPF-UI ContentDialog) hosted in MainWindow.DialogHost.</summary>
 public static class Dialogs
 {
-    static bool Show(string title, string text, string primary, string? secondary)
+    static ContentPresenter Host => ((MainWindow)Application.Current.MainWindow).DialogHost;
+
+    /// <summary>The dialog currently on screen (used by the smoke test to close it).</summary>
+    public static ContentDialog? Current { get; private set; }
+
+    public static async Task<bool> ShowAsync(string title, string text, string primary, string? close)
     {
-        var w = new FluentWindow
+        var d = new ContentDialog(Host)
         {
-            Title = title, Width = 460, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = Application.Current.MainWindow,
-            ExtendsContentIntoTitleBar = true, WindowBackdropType = WindowBackdropType.Mica, ShowInTaskbar = false,
+            Title = title,
+            Content = new System.Windows.Controls.TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 14 },
+            PrimaryButtonText = primary,
+            CloseButtonText = close ?? "",
+            DefaultButton = ContentDialogButton.Primary,
+            DialogMaxWidth = 520,
         };
-        var root = new System.Windows.Controls.StackPanel { Margin = new Thickness(0, 0, 0, 16) };
-        root.Children.Add(new TitleBar { Title = title, ShowMinimize = false, ShowMaximize = false });
-        root.Children.Add(new System.Windows.Controls.TextBlock
-        {
-            Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(24, 8, 24, 20), FontSize = 14,
-        });
-        var buttons = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(24, 0, 24, 0) };
-        var ok = new Wpf.Ui.Controls.Button { Content = primary, Appearance = ControlAppearance.Primary, MinWidth = 110, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        ok.Click += (_, _) => { w.DialogResult = true; w.Close(); };
-        buttons.Children.Add(ok);
-        if (secondary != null)
-        {
-            var cancel = new Wpf.Ui.Controls.Button { Content = secondary, MinWidth = 110, IsCancel = true };
-            cancel.Click += (_, _) => { w.DialogResult = false; w.Close(); };
-            buttons.Children.Add(cancel);
-        }
-        root.Children.Add(buttons);
-        w.Content = root;
-        return w.ShowDialog() == true;
+        Current = d;
+        try { return await d.ShowAsync() == ContentDialogResult.Primary; }
+        finally { Current = null; }
     }
 
-    public static bool Confirm(string text) => Show(L.S("Dlg_Attention"), text, L.S("Dlg_Ok"), L.S("Dlg_Cancel"));
-    public static void Error(string text) => Show(L.S("Dlg_Error"), text, L.S("Dlg_Ok"), null);
+    /// <summary>Called from a worker thread: shows the dialog on the UI thread and blocks until it closes.</summary>
+    public static bool Confirm(string text) =>
+        Application.Current.Dispatcher.InvokeAsync(() => ShowAsync(L.S("Dlg_Attention"), text, L.S("Dlg_Ok"), L.S("Dlg_Cancel"))).Task.Unwrap().GetAwaiter().GetResult();
+
+    public static void Error(string text) =>
+        Application.Current.Dispatcher.InvokeAsync(() => ShowAsync(L.S("Dlg_Error"), text, L.S("Dlg_Ok"), null)).Task.Unwrap().GetAwaiter().GetResult();
 }

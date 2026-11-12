@@ -129,11 +129,13 @@ public partial class MainWindow
         steps.Enqueue(("theme light", () => App.ApplyTheme("light")));
         steps.Enqueue(("page StatusPage", () => Nav.Navigate(typeof(StatusPage))));
         steps.Enqueue(("theme dark", () => App.ApplyTheme("dark")));
-        steps.Enqueue(("dialog", () =>
+        steps.Enqueue(("dialog", () => { _ = Dialogs.ShowAsync("smoke", "smoke dialog", "OK", "Cancel"); }));
+        steps.Enqueue(("check dialog", () =>
         {
-            // Open a dialog non-modally so the step returns; the next tick closes it.
-            var d = new Wpf.Ui.Controls.FluentWindow { Title = "smoke", Width = 300, Height = 150, Owner = this, Content = new System.Windows.Controls.TextBlock { Text = "smoke" } };
-            d.Show();
+            var d = Dialogs.Current ?? throw new InvalidOperationException("ContentDialog did not open");
+            if (!d.IsVisible || d.ActualHeight <= 0) throw new InvalidOperationException("ContentDialog is not visible");
+            App.SmokeLog($"dialog {d.ActualWidth:F0}x{d.ActualHeight:F0}");
+            d.Hide();
         }));
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         timer.Tick += (_, _) =>

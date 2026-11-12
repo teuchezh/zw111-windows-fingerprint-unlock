@@ -23,8 +23,8 @@ public sealed class Shell
     Shell()
     {
         Ops.Log = Log;
-        Ops.Error = msg => { Log(L.S("Dlg_Error") + ": " + msg); Ui.Invoke(() => Dialogs.Error(msg)); };
-        Ops.Ask = msg => Ui.Invoke(() => Dialogs.Confirm(msg));
+        Ops.Error = msg => { Log(L.S("Dlg_Error") + ": " + msg); Dialogs.Error(msg); };
+        Ops.Ask = msg => Dialogs.Confirm(msg);
     }
 
     public void Log(string line)
@@ -41,7 +41,7 @@ public sealed class Shell
         Task.Run(() =>
         {
             try { op(); }
-            catch (Exception e) { Log("EXCEPTION: " + e); Ui.Invoke(() => Dialogs.Error(e.Message)); }
+            catch (Exception e) { Log("EXCEPTION: " + e); Dialogs.Error(e.Message); }
             if (refreshStatus) RefreshStatusCore();
             Ui.Invoke(() => SetBusy(false));
         });

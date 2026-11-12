@@ -62,5 +62,8 @@
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
             </Grid>
         </Border>
+
+        <!-- Host for in-window Fluent dialogs (ContentDialog); last child so it is drawn on top -->
+        <ContentPresenter x:Name="DialogHost" Grid.Row="0" Grid.RowSpan="3" />
     </Grid>
 </ui:FluentWindow>
