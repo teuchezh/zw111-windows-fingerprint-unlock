@@ -1,6 +1,7 @@
 #include "proto.h"
 #include "sha256.h"
 #include "config.h"
+#include "i18n.h"
 #include <sstream>
 
 namespace zw {
@@ -32,14 +33,14 @@ bool OpenDevice(SerialPort& port, const std::wstring& portSetting, const std::ws
     if (_wcsicmp(portSetting.c_str(), L"auto") == 0) candidates = FindComPortsByUsbId(usbId);
     else candidates.push_back(portSetting);
     if (diag) diag->clear();
-    if (candidates.empty() && diag) *diag = L"нет COM-портов с USB id " + usbId + L" (см. zwsetup status)";
+    if (candidates.empty() && diag) *diag = Ts(S::NO_PORTS_WITH_ID) + usbId;
     for (auto& c : candidates) {
         if (!port.Open(c)) {
             DWORD e = GetLastError();
             if (diag) {
-                *diag += c + L": не открывается, ошибка " + std::to_wstring(e);
-                if (e == ERROR_ACCESS_DENIED) *diag += L" (порт занят другой программой: закройте монитор PlatformIO / Arduino)";
-                if (e == ERROR_FILE_NOT_FOUND) *diag += L" (порт исчез)";
+                *diag += c + T(S::PORT_OPEN_FAILED) + std::to_wstring(e);
+                if (e == ERROR_ACCESS_DENIED) *diag += T(S::PORT_BUSY);
+                if (e == ERROR_FILE_NOT_FOUND) *diag += T(S::PORT_GONE);
                 *diag += L"\n";
             }
             continue;
@@ -51,7 +52,7 @@ bool OpenDevice(SerialPort& port, const std::wstring& portSetting, const std::ws
             if (!err.empty()) got = err;
             Sleep(400);
         }
-        if (diag) *diag += c + L": открыт, но нет ответа на HELLO (" + A2W(got) + L"). Прошивка залита? Проверьте в мониторе.\n";
+        if (diag) *diag += c + T(S::PORT_NO_HELLO) + A2W(got) + T(S::PORT_NO_HELLO2) + L"\n";
         port.Close();
     }
     return false;

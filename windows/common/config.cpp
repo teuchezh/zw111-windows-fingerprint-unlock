@@ -1,5 +1,6 @@
 #include "config.h"
 #include "sha256.h"
+#include "i18n.h"
 #include <bcrypt.h>
 #include <dpapi.h>
 #include <sddl.h>
@@ -64,7 +65,7 @@ static bool RegDword(HKEY k, const wchar_t* name, DWORD& out) {
 bool LoadConfig(Config& cfg, std::wstring* err) {
     HKEY k;
     LONG r = RegOpenKeyExW(HKEY_LOCAL_MACHINE, kRegPath, 0, KEY_READ | KEY_WOW64_64KEY, &k);
-    if (r != ERROR_SUCCESS) { if (err) *err = L"Ключ реестра HKLM\\" + std::wstring(kRegPath) + L" не найден. Выполните zwsetup provision."; return false; }
+    if (r != ERROR_SUCCESS) { if (err) *err = (CurrentLang() == Lang::Ru ? L"Ключ реестра HKLM\\" + std::wstring(kRegPath) + L" не найден. Выполните настройку (шаг 1)." : L"Registry key HKLM\\" + std::wstring(kRegPath) + L" not found. Run the setup (step 1)."); return false; }
     std::wstring s; DWORD d;
     if (RegStr(k, L"Port", s)) cfg.port = s;
     if (RegStr(k, L"UsbId", s)) cfg.usbId = s;
@@ -73,13 +74,15 @@ bool LoadConfig(Config& cfg, std::wstring* err) {
     if (RegDword(k, L"FingerId", d)) cfg.fingerId = d;
     if (RegDword(k, L"Enabled", d)) cfg.enabled = d != 0;
     if (RegDword(k, L"Debug", d)) cfg.debug = d != 0;
+    if (RegStr(k, L"Lang", s)) cfg.lang = s;
+    SetLangFromSetting(cfg.lang);
     DWORD cb = 0, t = 0;
     if (RegQueryValueExW(k, L"Blob", nullptr, &t, nullptr, &cb) == ERROR_SUCCESS && t == REG_BINARY && cb > 0) {
         cfg.blob.resize(cb);
         if (RegQueryValueExW(k, L"Blob", nullptr, &t, cfg.blob.data(), &cb) != ERROR_SUCCESS) cfg.blob.clear();
     }
     RegCloseKey(k);
-    if (cfg.user.empty() || cfg.blob.empty()) { if (err) *err = L"Конфигурация неполная (нет User или Blob)."; return false; }
+    if (cfg.user.empty() || cfg.blob.empty()) { if (err) *err = CurrentLang() == Lang::Ru ? L"Конфигурация неполная (нет User или Blob)." : L"Configuration incomplete (no User or Blob)."; return false; }
     return true;
 }
 
@@ -95,11 +98,12 @@ bool SaveConfig(const Config& cfg, std::wstring* err) {
     HKEY k; DWORD disp;
     LONG r = RegCreateKeyExW(HKEY_LOCAL_MACHINE, kRegPath, 0, nullptr, 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &sa, &k, &disp);
     LocalFree(sd);
-    if (r != ERROR_SUCCESS) { if (err) *err = L"RegCreateKeyEx failed (нужны права администратора)"; return false; }
+    if (r != ERROR_SUCCESS) { if (err) *err = L"RegCreateKeyEx failed (administrator rights required)"; return false; }
     auto setStr = [&](const wchar_t* n, const std::wstring& v) { RegSetValueExW(k, n, 0, REG_SZ, (const BYTE*)v.c_str(), (DWORD)((v.size() + 1) * 2)); };
     auto setDw  = [&](const wchar_t* n, DWORD v) { RegSetValueExW(k, n, 0, REG_DWORD, (const BYTE*)&v, sizeof(v)); };
     setStr(L"Port", cfg.port); setStr(L"UsbId", cfg.usbId); setStr(L"User", cfg.user); setStr(L"Domain", cfg.domain);
     setDw(L"FingerId", cfg.fingerId); setDw(L"Enabled", cfg.enabled ? 1 : 0); setDw(L"Debug", cfg.debug ? 1 : 0);
+    setStr(L"Lang", cfg.lang);
     RegSetValueExW(k, L"Blob", 0, REG_BINARY, cfg.blob.data(), (DWORD)cfg.blob.size());
     RegCloseKey(k);
     // Re-apply the DACL explicitly in case the key already existed with a permissive one.
@@ -148,7 +152,7 @@ bool UnprotectSecrets(const std::vector<uint8_t>& blob, Secrets& s, std::wstring
         if (4 + 32 + 32 + 12 + 16 + 4 + len == n) { s.ct.assign(p, p + len); ok = true; }
     }
     SecureZeroMemory(out.pbData, out.cbData); LocalFree(out.pbData);
-    if (!ok && err) *err = L"Blob повреждён";
+    if (!ok && err) *err = L"Blob is corrupted";
     return ok;
 }
 

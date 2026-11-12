@@ -4,6 +4,7 @@
 #include "guid.h"
 #include "../common/proto.h"
 #include "../common/sha256.h"
+#include "../common/i18n.h"
 #include <shlwapi.h>
 #include <sddl.h>
 #include <strsafe.h>
@@ -16,16 +17,16 @@ static const GUID kCpfgLabel = { 0x286bbff3, 0xbad4, 0x438f, { 0xb0, 0x07, 0x79,
 
 static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_fields[FI_NUM_FIELDS] = {
     { FI_TILEIMAGE, CPFT_TILE_IMAGE,    (PWSTR)L"Image",  kCpfgLogo },
-    { FI_LABEL,     CPFT_LARGE_TEXT,    (PWSTR)L"Отпечаток пальца", kCpfgLabel },
-    { FI_STATUS,    CPFT_SMALL_TEXT,    (PWSTR)L"Статус", GUID_NULL },
-    { FI_SUBMIT,    CPFT_SUBMIT_BUTTON, (PWSTR)L"Войти",  GUID_NULL },
+    { FI_LABEL,     CPFT_LARGE_TEXT,    (PWSTR)L"Fingerprint", kCpfgLabel },
+    { FI_STATUS,    CPFT_SMALL_TEXT,    (PWSTR)L"Status", GUID_NULL },
+    { FI_SUBMIT,    CPFT_SUBMIT_BUTTON, (PWSTR)L"Sign in", GUID_NULL },
 };
 const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* GetFieldDescriptors() { return s_fields; }
 
 ZwCredential::ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const Config& cfg)
     : _provider(provider), _cpus(cpus), _cfg(cfg) {
     _domain = EffectiveDomain(cfg);
-    _status = L"Подключение к сканеру…";
+    _status = T(S::CP_CONNECTING);
     _hRestart = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     // Resolve the SID of the configured account so LogonUI can attach the tile to that user.
     std::wstring qualified = _domain + L"\\" + cfg.user;
@@ -79,9 +80,9 @@ IFACEMETHODIMP ZwCredential::GetFieldState(DWORD id, CREDENTIAL_PROVIDER_FIELD_S
 
 IFACEMETHODIMP ZwCredential::GetStringValue(DWORD id, PWSTR* ppwsz) {
     switch (id) {
-    case FI_LABEL:  return SHStrDupW(L"Отпечаток пальца", ppwsz);
+    case FI_LABEL:  return SHStrDupW(T(S::CP_LABEL), ppwsz);
     case FI_STATUS: { std::lock_guard<std::mutex> g(_mtx); return SHStrDupW(_status.c_str(), ppwsz); }
-    case FI_SUBMIT: return SHStrDupW(L"Войти", ppwsz);
+    case FI_SUBMIT: return SHStrDupW(T(S::CP_SUBMIT), ppwsz);
     default: return E_INVALIDARG;
     }
 }
@@ -109,7 +110,7 @@ IFACEMETHODIMP ZwCredential::GetSerialization(CREDENTIAL_PROVIDER_GET_SERIALIZAT
     {
         std::lock_guard<std::mutex> g(_mtx);
         if (!_matched) {
-            SHStrDupW(L"Приложите палец к сканеру", ppwszOptionalStatusText);
+            SHStrDupW(T(S::CP_TOUCH), ppwszOptionalStatusText);
             *pcpsiOptionalStatusIcon = CPSI_WARNING;
             return S_FALSE;
         }
@@ -151,14 +152,14 @@ IFACEMETHODIMP ZwCredential::ReportResult(NTSTATUS ntsStatus, NTSTATUS ntsSubsta
         _matched = false;
     }
     if (ntsStatus != 0) {
-        wchar_t msg[160];
+        wchar_t msg[200];
         if ((unsigned)ntsStatus == 0xC000006Du)
-            StringCchPrintfW(msg, 160, L"Windows не приняла имя или пароль (0xC000006D). Проверьте учётную запись и пароль в zwsetup-gui, кнопка «3. Проверить».");
+            StringCchPrintfW(msg, 200, L"%ls", T(S::CP_LOGON_BAD_CRED));
         else
-            StringCchPrintfW(msg, 160, L"Вход не выполнен (0x%08X). Проверьте настройку в zwsetup-gui, кнопка «3. Проверить».", (unsigned)ntsStatus);
+            StringCchPrintfW(msg, 200, T(S::CP_LOGON_FAILED_FMT), (unsigned)ntsStatus);
         SHStrDupW(msg, ppwszOptionalStatusText);
         *pcpsiOptionalStatusIcon = CPSI_ERROR;
-        SetStatus(L"Приложите палец к сканеру", false);
+        SetStatus(T(S::CP_TOUCH), false);
         if (_hRestart) SetEvent(_hRestart);   // run another handshake
     }
     return S_OK;
@@ -198,7 +199,7 @@ void ZwCredential::WorkerMain() {
     std::wstring err;
     if (!UnprotectSecrets(_cfg.blob, secrets, &err)) {
         Log(L"UnprotectSecrets failed: %ls", err.c_str());
-        SetStatus(L"Ошибка конфигурации: " + err, true);
+        SetStatus(Ts(S::CP_CFG_ERROR) + err, true);
         return;
     }
     SerialPort port;
@@ -207,7 +208,7 @@ void ZwCredential::WorkerMain() {
     while (!_stop) {
         if (!port.IsOpen()) {
             if (!OpenDevice(port, _cfg.port, _cfg.usbId, &portName)) {
-                SetStatus(L"Сканер не подключён", true);
+                SetStatus(T(S::CP_NO_DEVICE), true);
                 for (int i = 0; i < backoffMs / 100 && !_stop; i++) Sleep(100);
                 if (backoffMs < 3000) backoffMs += 500;
                 continue;
@@ -219,8 +220,8 @@ void ZwCredential::WorkerMain() {
         _cancelAuth = false;
         AuthResult r = RunAuth(port, secrets.kauth, _cancelAuth, kdev, fingerId, &perr,
             [this](const std::string& ev) {
-                if (ev == "WAIT") SetStatus(L"Приложите палец к сканеру", true);
-                else if (ev == "NOMATCH") SetStatus(L"Палец не распознан, попробуйте ещё раз", true);
+                if (ev == "WAIT") SetStatus(T(S::CP_TOUCH), true);
+                else if (ev == "NOMATCH") SetStatus(T(S::CP_NOMATCH), true);
             });
         if (_stop) break;
         switch (r) {
@@ -228,7 +229,7 @@ void ZwCredential::WorkerMain() {
             Log(L"MATCH finger=%d", fingerId);
             if (_cfg.fingerId != 0 && (DWORD)fingerId != _cfg.fingerId) {
                 SecureZeroMemory(kdev, 32);
-                SetStatus(L"Этот палец не разрешён для входа", true);
+                SetStatus(T(S::CP_FINGER_DENIED), true);
                 Sleep(1500);
                 continue;
             }
@@ -237,13 +238,13 @@ void ZwCredential::WorkerMain() {
             SecureZeroMemory(kdev, 32);
             if (!ok) {
                 Log(L"OpenPassword failed (device/PC key mismatch)");
-                SetStatus(L"Устройство не соответствует этому ПК. Запустите zwsetup provision.", true);
+                SetStatus(T(S::CP_KEY_MISMATCH), true);
                 Sleep(3000);
                 continue;
             }
             {
                 std::lock_guard<std::mutex> g(_mtx);
-                _password = pw; _matched = true; _status = L"Отпечаток распознан, выполняется вход…";
+                _password = pw; _matched = true; _status = T(S::CP_MATCHED);
             }
             SecureZeroMemory(&pw[0], pw.size() * sizeof(wchar_t));
             NotifyProvider();     // LogonUI re-enumerates, sees auto-logon and calls GetSerialization
@@ -262,14 +263,14 @@ void ZwCredential::WorkerMain() {
         case AuthResult::NoDevice:
             Log(L"device lost: %ls", A2W(perr).c_str());
             port.Close();
-            SetStatus(L"Сканер отключён", true);
+            SetStatus(T(S::CP_DEVICE_LOST), true);
             break;
         case AuthResult::AuthFailed:
-            SetStatus(L"Устройство не принимает этот ПК (ключ K_auth). Запустите zwsetup provision.", true);
+            SetStatus(T(S::CP_AUTH_FAILED), true);
             for (int i = 0; i < 50 && !_stop; i++) Sleep(100);
             break;
         case AuthResult::NotProvisioned:
-            SetStatus(L"Устройство не настроено. Запустите zwsetup provision.", true);
+            SetStatus(T(S::CP_NOT_PROVISIONED), true);
             for (int i = 0; i < 50 && !_stop; i++) Sleep(100);
             break;
         case AuthResult::Timeout:

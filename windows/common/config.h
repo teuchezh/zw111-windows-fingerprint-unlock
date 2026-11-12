@@ -17,6 +17,7 @@ struct Config {
     DWORD fingerId = 0;                            // 0 = any enrolled finger
     bool enabled = true;
     bool debug = false;
+    std::wstring lang = L"auto";                 // "auto" | "ru" | "en"
     std::vector<uint8_t> blob;                     // DPAPI-protected Secrets
 };
 

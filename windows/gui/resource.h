@@ -1,5 +1,6 @@
 #pragma once
-#define IDD_MAIN            100
+#define IDD_MAIN_RU         100
+#define IDD_MAIN_EN         101
 #define IDC_USER            101
 #define IDC_DOMAIN          102
 #define IDC_PASS            103
@@ -23,3 +24,5 @@
 #define IDC_BTN_WIPE        130
 #define IDC_BTN_UNINSTALL   131
 #define IDC_HINT            132
+#define IDC_LANG            133
+#define IDC_LANG_LABEL      134

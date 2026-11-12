@@ -2,6 +2,8 @@
 
 [![build](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml/badge.svg)](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml)
 
+🇬🇧 [English version](README.en.md)
+
 Это «правильный» вариант: никакой эмуляции клавиатуры. На экране входа и блокировки
 появляется своя плитка «Отпечаток пальца». Когда сканер ZW111 узнаёт палец, Windows
 выполняет обычный интерактивный вход через LSA, как если бы вы ввели пароль.
@@ -22,7 +24,7 @@
 | `windows/credprov/` | Credential Provider: COM-DLL `ZwCredProv.dll`, грузится в LogonUI. |
 | `windows/setup/` | `zwsetup.exe`: консольная утилита настройки, записи пальцев, проверки. |
 | `windows/gui/` | `zwsetup-gui.exe`: то же самое в одном окне, запрашивает права администратора сам. |
-| `windows/common/` | Общий код: COM-порт, реестр + DPAPI, AES-GCM, протокол. |
+| `windows/common/` | Общий код: COM-порт, реестр + DPAPI, AES-GCM, протокол, таблица строк (RU/EN). |
 | `windows/build/` | Уже собранные x64 `ZwCredProv.dll`, `zwsetup.exe`, `zwsetup-gui.exe` (mingw-w64). |
 | `tests/` | Проверка SHA-256/HMAC против Python `hashlib`. |
 
@@ -137,6 +139,8 @@ git push origin v1.0
 
 «Обновить статус» показывает все COM-порты с USB-идентификаторами и состояние устройства.
 Если порт занят монитором PlatformIO, статус так и скажет.
+Выпадающий список языка переключает окно, консольную утилиту и плитку на экране входа
+(сохраняется как `Lang` в реестре: `auto`, `ru` или `en`; `auto` следует языку интерфейса Windows).
 
 ### Вариант B: консоль `zwsetup.exe` (PowerShell от администратора)
 
@@ -175,7 +179,7 @@ zwsetup test
 приложите палец, вход произойдёт сам.
 
 Прочие команды: `status`, `set-password` (после смены пароля Windows), `delete --id N`,
-`disable` / `enable` (скрыть плитку, не удаляя настройки), `wipe`, `uninstall`.
+`disable` / `enable` (скрыть плитку, не удаляя настройки), `lang auto|ru|en`, `wipe`, `uninstall`.
 
 Снять полностью:
 

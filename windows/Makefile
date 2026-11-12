@@ -6,7 +6,7 @@ CXXFLAGS ?= -O2 -std=c++17 -municode -DUNICODE -D_UNICODE -D_WIN32_WINNT=0x0A00 
 LDFLAGS  ?= -static -static-libgcc -static-libstdc++
 LIBS      = -lole32 -loleaut32 -luuid -lsecur32 -ladvapi32 -lcrypt32 -lbcrypt -lsetupapi -lshlwapi -lgdi32 -lshell32 -lcredui -lnetapi32
 
-COMMON   = common/serial.cpp common/config.cpp common/proto.cpp
+COMMON   = common/serial.cpp common/config.cpp common/proto.cpp common/i18n.cpp
 CP_SRC   = credprov/Dll.cpp credprov/Provider.cpp credprov/Credential.cpp credprov/helpers.cpp
 
 all: build/ZwCredProv.dll build/zwsetup.exe build/zwsetup-gui.exe

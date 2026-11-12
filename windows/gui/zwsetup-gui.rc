@@ -6,12 +6,12 @@
 
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 
-IDD_MAIN DIALOGEX 0, 0, 420, 352
+IDD_MAIN_RU DIALOGEX 0, 0, 420, 358
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX
 CAPTION "Вход по отпечатку: ZW111 + RP2040"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
-    GROUPBOX        "Учётная запись Windows", -1, 7, 7, 200, 100
+    GROUPBOX        "Учётная запись Windows", -1, 7, 7, 200, 108
     LTEXT           "Пользователь:", -1, 14, 22, 56, 8
     EDITTEXT        IDC_USER, 74, 20, 126, 12, ES_AUTOHSCROLL
     LTEXT           "Домен:", -1, 14, 38, 56, 8
@@ -23,7 +23,7 @@ BEGIN
     LTEXT           "Разрешённый слот пальца (0 = любой):", -1, 14, 88, 130, 8
     EDITTEXT        IDC_FINGER, 150, 86, 24, 12, ES_NUMBER
 
-    GROUPBOX        "Устройство и провайдер", -1, 213, 7, 200, 100
+    GROUPBOX        "Устройство и провайдер", -1, 213, 7, 200, 108
     LTEXT           "COM-порт:", -1, 220, 22, 40, 8
     EDITTEXT        IDC_PORT, 262, 20, 144, 12, ES_AUTOHSCROLL
     LTEXT           "USB id:", -1, 220, 38, 40, 8
@@ -34,18 +34,68 @@ BEGIN
     PUSHBUTTON      "Снять регистрацию DLL", IDC_BTN_UNREGISTER, 306, 86, 100, 14
     PUSHBUTTON      "Вкл/выкл плитку", IDC_BTN_TOGGLE, 220, 86, 80, 14
 
-    LTEXT           "", IDC_STATUS, 7, 112, 406, 34, SS_LEFT | SS_SUNKEN | SS_NOPREFIX
+    LTEXT           "Язык / Language:", IDC_LANG_LABEL, 220, 104, 70, 8
+    COMBOBOX        IDC_LANG, 292, 102, 114, 60, CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT           "", IDC_STATUS, 7, 118, 406, 34, SS_LEFT | SS_SUNKEN | SS_NOPREFIX
 
-    PUSHBUTTON      "1. Настроить устройство и пароль", IDC_BTN_PROVISION, 7, 152, 128, 18
-    PUSHBUTTON      "2. Записать палец в слот", IDC_BTN_ENROLL, 141, 152, 94, 18
-    EDITTEXT        IDC_ENROLL_ID, 239, 155, 22, 12, ES_NUMBER
-    PUSHBUTTON      "3. Проверить", IDC_BTN_TEST, 267, 152, 64, 18
-    PUSHBUTTON      "Сменить пароль", IDC_BTN_SETPW, 337, 152, 76, 18
+    PUSHBUTTON      "1. Настроить устройство и пароль", IDC_BTN_PROVISION, 7, 158, 128, 18
+    PUSHBUTTON      "2. Записать палец в слот", IDC_BTN_ENROLL, 141, 158, 94, 18
+    EDITTEXT        IDC_ENROLL_ID, 239, 161, 22, 12, ES_NUMBER
+    PUSHBUTTON      "3. Проверить", IDC_BTN_TEST, 267, 158, 64, 18
+    PUSHBUTTON      "Сменить пароль", IDC_BTN_SETPW, 337, 158, 76, 18
 
-    PUSHBUTTON      "Удалить палец из слота", IDC_BTN_DELETE, 7, 174, 128, 16
-    PUSHBUTTON      "Стереть устройство", IDC_BTN_WIPE, 141, 174, 94, 16
-    PUSHBUTTON      "Удалить настройки", IDC_BTN_UNINSTALL, 267, 174, 146, 16
+    PUSHBUTTON      "Удалить палец из слота", IDC_BTN_DELETE, 7, 180, 128, 16
+    PUSHBUTTON      "Стереть устройство", IDC_BTN_WIPE, 141, 180, 94, 16
+    PUSHBUTTON      "Удалить настройки", IDC_BTN_UNINSTALL, 267, 180, 146, 16
 
-    LTEXT           "Для действий с устройством держите кнопку USR (или BOOT) на плате, когда программа попросит.", IDC_HINT, 7, 194, 406, 8
-    EDITTEXT        IDC_LOG, 7, 206, 406, 139, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+    LTEXT           "Для действий с устройством держите кнопку USR (или BOOT) на плате, когда программа попросит.", IDC_HINT, 7, 200, 406, 8
+    EDITTEXT        IDC_LOG, 7, 212, 406, 139, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
+END
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+IDD_MAIN_EN DIALOGEX 0, 0, 420, 358
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX
+CAPTION "Fingerprint sign-in: ZW111 + RP2040"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Windows account", -1, 7, 7, 200, 108
+    LTEXT           "User name:", -1, 14, 22, 56, 8
+    EDITTEXT        IDC_USER, 74, 20, 126, 12, ES_AUTOHSCROLL
+    LTEXT           "Domain:", -1, 14, 38, 56, 8
+    EDITTEXT        IDC_DOMAIN, 74, 36, 126, 12, ES_AUTOHSCROLL
+    LTEXT           "Password:", -1, 14, 54, 56, 8
+    EDITTEXT        IDC_PASS, 74, 52, 126, 12, ES_PASSWORD | ES_AUTOHSCROLL
+    LTEXT           "Repeat password:", -1, 14, 70, 60, 8
+    EDITTEXT        IDC_PASS2, 74, 68, 126, 12, ES_PASSWORD | ES_AUTOHSCROLL
+    LTEXT           "Allowed finger slot (0 = any):", -1, 14, 88, 130, 8
+    EDITTEXT        IDC_FINGER, 150, 86, 24, 12, ES_NUMBER
+
+    GROUPBOX        "Device and provider", -1, 213, 7, 200, 108
+    LTEXT           "COM port:", -1, 220, 22, 40, 8
+    EDITTEXT        IDC_PORT, 262, 20, 144, 12, ES_AUTOHSCROLL
+    LTEXT           "USB id:", -1, 220, 38, 40, 8
+    EDITTEXT        IDC_USBID, 262, 36, 144, 12, ES_AUTOHSCROLL
+    AUTOCHECKBOX    "Write provider debug log", IDC_DEBUG, 220, 52, 180, 10
+    PUSHBUTTON      "Refresh status", IDC_BTN_STATUS, 220, 68, 80, 14
+    PUSHBUTTON      "Register DLL", IDC_BTN_REGISTER, 306, 68, 100, 14
+    PUSHBUTTON      "Unregister DLL", IDC_BTN_UNREGISTER, 306, 86, 100, 14
+    PUSHBUTTON      "Enable/disable tile", IDC_BTN_TOGGLE, 220, 86, 80, 14
+
+    LTEXT           "Language / Язык:", IDC_LANG_LABEL, 220, 104, 70, 8
+    COMBOBOX        IDC_LANG, 292, 102, 114, 60, CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT           "", IDC_STATUS, 7, 118, 406, 34, SS_LEFT | SS_SUNKEN | SS_NOPREFIX
+
+    PUSHBUTTON      "1. Set up device and password", IDC_BTN_PROVISION, 7, 158, 128, 18
+    PUSHBUTTON      "2. Enroll finger into slot", IDC_BTN_ENROLL, 141, 158, 94, 18
+    EDITTEXT        IDC_ENROLL_ID, 239, 161, 22, 12, ES_NUMBER
+    PUSHBUTTON      "3. Test", IDC_BTN_TEST, 267, 158, 64, 18
+    PUSHBUTTON      "Change password", IDC_BTN_SETPW, 337, 158, 76, 18
+
+    PUSHBUTTON      "Delete finger from slot", IDC_BTN_DELETE, 7, 180, 128, 16
+    PUSHBUTTON      "Wipe device", IDC_BTN_WIPE, 141, 180, 94, 16
+    PUSHBUTTON      "Remove settings", IDC_BTN_UNINSTALL, 267, 180, 146, 16
+
+    LTEXT           "For device actions hold the USR (or BOOT) button on the board when asked.", IDC_HINT, 7, 200, 406, 8
+    EDITTEXT        IDC_LOG, 7, 212, 406, 139, ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL
 END
