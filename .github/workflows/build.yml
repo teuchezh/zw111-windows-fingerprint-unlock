@@ -10,9 +10,9 @@ on:
 jobs:
   tests:
     name: crypto self-test (Linux)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build and run test vectors
         run: |
           g++ -O2 -Wall -o /tmp/test_crypto tests/test_crypto.cpp
@@ -20,7 +20,7 @@ jobs:
 
   firmware:
     name: firmware (${{ matrix.env }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -36,12 +36,12 @@ jobs:
             experimental: true
     continue-on-error: ${{ matrix.experimental }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Cache PlatformIO
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.platformio
@@ -52,7 +52,7 @@ jobs:
       - name: Build
         working-directory: firmware
         run: pio run -e ${{ matrix.env }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: firmware-${{ matrix.env }}
           path: ${{ matrix.artifact }}
@@ -60,16 +60,16 @@ jobs:
 
   windows-msvc:
     name: Windows binaries (MSVC)
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-      - name: Build
+      - uses: actions/checkout@v5
+      - name: Build (x64 Native Tools environment)
         working-directory: windows
         shell: cmd
-        run: build.bat
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
+          call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat"
+          build.bat
       - name: Check that UTF-8 source strings survived compilation
         shell: pwsh
         run: |
@@ -81,7 +81,7 @@ jobs:
             if ($hex -notmatch $needle) { Write-Error "UTF-16 string '$($checks[$f])' not found in $f (source read in wrong code page?)"; exit 1 }
             Write-Host "OK: $f"
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows-msvc
           path: |
@@ -92,15 +92,15 @@ jobs:
 
   windows-mingw:
     name: Windows binaries (mingw-w64)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install mingw-w64
         run: sudo apt-get update && sudo apt-get install -y g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
       - name: Build
         working-directory: windows
         run: make
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: windows-mingw
           path: |
@@ -113,12 +113,12 @@ jobs:
     name: GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [tests, firmware, windows-msvc]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v6
         with:
           path: dist
       - name: Assemble release archive
