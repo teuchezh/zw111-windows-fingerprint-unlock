@@ -14,7 +14,7 @@ public partial class App : Application
     public static void SmokeLog(string msg)
     {
         if (!Smoke) return;
-        lock (SmokeLock) File.AppendAllText("smoke.log", DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine);
+        lock (SmokeLock) System.IO.File.AppendAllText("smoke.log", DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine);
     }
     public static void SmokeExit(int code, string msg) { SmokeLog("exit " + code + ": " + msg); Environment.Exit(code); }
 
@@ -25,7 +25,7 @@ public partial class App : Application
         if (Smoke)
         {
             // CI self-test: any unhandled exception (XAML parse, binding, missing resource) fails the run.
-            File.Delete("smoke.log");
+            System.IO.File.Delete("smoke.log");
             DispatcherUnhandledException += (_, ex) => SmokeExit(2, ex.Exception.ToString());
             AppDomain.CurrentDomain.UnhandledException += (_, ex) => SmokeExit(3, ex.ExceptionObject.ToString() ?? "");
             new Thread(() => { Thread.Sleep(45000); SmokeExit(4, "watchdog timeout"); }) { IsBackground = true }.Start();

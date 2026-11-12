@@ -22,7 +22,7 @@ public partial class StatusPage : Page
         TileSwitch.IsChecked = st.CfgExists && st.Cfg.Enabled;
         TileSwitch.IsEnabled = st.CfgExists && st.Cfg.IsComplete;
         DeviceText.Text = st.Device != null
-            ? L.F("Status_DeviceOn", st.DevicePort, L.S(st.Device.Provisioned ? "Status_KeysYes" : "Status_KeysNo"), st.Device.Templates)
+            ? L.F("Status_DeviceOn", st.DevicePort ?? "", L.S(st.Device.Provisioned ? "Status_KeysYes" : "Status_KeysNo"), st.Device.Templates)
             : L.S("Status_DeviceOff") + (st.Diag.Length > 0 ? "\n" + st.Diag : "");
         PortsList.ItemsSource = st.Ports;
         NoPortsText.Visibility = st.Ports.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
