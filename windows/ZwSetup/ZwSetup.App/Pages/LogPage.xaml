@@ -14,7 +14,7 @@
                 <ui:Button.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:Button.Icon>
             </ui:Button>
         </Grid>
-        <ui:TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+        <ui:TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="300"
                     VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" />
     </Grid>
 </Page>

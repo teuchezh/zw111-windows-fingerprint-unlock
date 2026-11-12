@@ -3,64 +3,63 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
       xmlns:core="clr-namespace:ZwSetup.Core;assembly=ZwSetup.Core">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
-        <StackPanel MaxWidth="820">
-            <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Fingers_Title], Source={x:Static core:L.I}}" />
+    <!-- No ScrollViewer here: the WPF-UI NavigationView wraps every page in its own DynamicScrollViewer. -->
+    <StackPanel Margin="24,16,24,24" MaxWidth="868">
+        <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Fingers_Title], Source={x:Static core:L.I}}" />
 
-            <ui:CardControl Style="{StaticResource Card}">
-                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Fingerprint24" /></ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Count], Source={x:Static core:L.I}}" />
-                        <TextBlock x:Name="CountText" Style="{StaticResource CardDesc}" Text="—" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-            </ui:CardControl>
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Fingerprint24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Count], Source={x:Static core:L.I}}" />
+                    <TextBlock x:Name="CountText" Style="{StaticResource CardDesc}" Text="—" />
+                </StackPanel>
+            </ui:CardControl.Header>
+        </ui:CardControl>
 
-            <ui:CardControl Style="{StaticResource Card}">
-                <ui:CardControl.Icon><ui:SymbolIcon Symbol="NumberSymbol24" /></ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Slot], Source={x:Static core:L.I}}" />
-                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_SlotDesc], Source={x:Static core:L.I}}" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:TextBox x:Name="SlotBox" Width="90" Text="1" />
-            </ui:CardControl>
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="NumberSymbol24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Slot], Source={x:Static core:L.I}}" />
+                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_SlotDesc], Source={x:Static core:L.I}}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:TextBox x:Name="SlotBox" Width="90" Text="1" />
+        </ui:CardControl>
 
-            <ui:CardControl Style="{StaticResource Card}">
-                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Add24" /></ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Enroll], Source={x:Static core:L.I}}" />
-                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_EnrollDesc], Source={x:Static core:L.I}}" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button Appearance="Primary" MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Enroll_Click" />
-            </ui:CardControl>
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Add24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Enroll], Source={x:Static core:L.I}}" />
+                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_EnrollDesc], Source={x:Static core:L.I}}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:Button Appearance="Primary" MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Enroll_Click" />
+        </ui:CardControl>
 
-            <ui:CardControl Style="{StaticResource Card}">
-                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Delete], Source={x:Static core:L.I}}" />
-                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_DeleteDesc], Source={x:Static core:L.I}}" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Delete_Click" />
-            </ui:CardControl>
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Delete], Source={x:Static core:L.I}}" />
+                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_DeleteDesc], Source={x:Static core:L.I}}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:Button MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Delete_Click" />
+        </ui:CardControl>
 
-            <TextBlock Style="{StaticResource SectionTitle}" Text=" " />
-            <ui:CardControl Style="{StaticResource Card}">
-                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Eraser24" /></ui:CardControl.Icon>
-                <ui:CardControl.Header>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Wipe], Source={x:Static core:L.I}}" />
-                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_WipeDesc], Source={x:Static core:L.I}}" />
-                    </StackPanel>
-                </ui:CardControl.Header>
-                <ui:Button Appearance="Danger" MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Wipe_Click" />
-            </ui:CardControl>
-        </StackPanel>
-    </ScrollViewer>
+        <TextBlock Style="{StaticResource SectionTitle}" Text=" " />
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Eraser24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fingers_Wipe], Source={x:Static core:L.I}}" />
+                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Fingers_WipeDesc], Source={x:Static core:L.I}}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:Button Appearance="Danger" MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Wipe_Click" />
+        </ui:CardControl>
+    </StackPanel>
 </Page>
