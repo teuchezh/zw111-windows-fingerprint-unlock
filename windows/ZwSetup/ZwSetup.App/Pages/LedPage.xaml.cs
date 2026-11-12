@@ -97,8 +97,10 @@ public partial class LedPage : Page
     }
 
     /// <summary>Smoke test: every control panel must fit inside its card.</summary>
-    public void SelfCheck()
+    public void SelfCheck(bool expectWide = false)
     {
+        if (expectWide && EffectCards.ActualWidth < WideThreshold)
+            throw new InvalidOperationException($"expected the wide layout, list width is {EffectCards.ActualWidth:F0}");
         foreach (var (_, controls, header, card) in _layout)
         {
             var right = controls.TransformToAncestor(card).Transform(new Point(controls.ActualWidth, 0)).X;
