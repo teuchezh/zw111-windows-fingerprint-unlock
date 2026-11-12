@@ -35,7 +35,8 @@ public partial class MainWindow
         foreach (var lang in new[] { "ru", "en" })
         {
             steps.Enqueue(() => L.Apply(lang));
-            foreach (var p in pages) steps.Enqueue(() => { if (!Nav.Navigate(p)) throw new InvalidOperationException("Navigate failed: " + p.Name); });
+            // Navigate returns false when the page is already current, so only exceptions count as failures.
+            foreach (var p in pages) steps.Enqueue(() => Nav.Navigate(p));
         }
         steps.Enqueue(() => App.ApplyTheme("light"));
         steps.Enqueue(() => Nav.Navigate(typeof(StatusPage)));
