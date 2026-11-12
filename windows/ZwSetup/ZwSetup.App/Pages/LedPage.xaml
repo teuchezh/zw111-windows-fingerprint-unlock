@@ -1,0 +1,56 @@
+<Page x:Class="ZwSetup.App.Pages.LedPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:core="clr-namespace:ZwSetup.Core;assembly=ZwSetup.Core">
+    <!-- No ScrollViewer here: the WPF-UI NavigationView wraps every page in its own DynamicScrollViewer. -->
+    <StackPanel Margin="24,16,24,24" MaxWidth="868">
+        <Grid>
+            <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Led_Title], Source={x:Static core:L.I}}" />
+            <ui:Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding [Led_Reload], Source={x:Static core:L.I}}" Click="Reload_Click">
+                <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowSync24" /></ui:Button.Icon>
+            </ui:Button>
+        </Grid>
+
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Lightbulb24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Led_Sensor], Source={x:Static core:L.I}}" />
+                    <TextBlock x:Name="ProtoText" Style="{StaticResource CardDesc}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+        </ui:CardControl>
+
+        <StackPanel x:Name="Editor" IsEnabled="False">
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Timer24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Led_WaitLight], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Led_WaitLightDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:TextBox x:Name="WaitLightBox" Width="90" Text="0" />
+            </ui:CardControl>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="{Binding [Led_Effects], Source={x:Static core:L.I}}" />
+            <StackPanel x:Name="EffectCards" />
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text=" " />
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Save24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Led_Save], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Led_SaveDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button Appearance="Primary" MinWidth="120" Margin="0,0,8,0" Content="{Binding [Led_Save], Source={x:Static core:L.I}}" Click="Save_Click" />
+                    <ui:Button MinWidth="120" Content="{Binding [Led_Reset], Source={x:Static core:L.I}}" Click="Reset_Click" />
+                </StackPanel>
+            </ui:CardControl>
+        </StackPanel>
+    </StackPanel>
+</Page>

@@ -84,7 +84,7 @@ static bool AuthGetKdev(SerialPort& port, const Secrets& s, uint8_t kdev[32]) {
     AuthResult r = RunAuth(port, s.kauth, cancel, kdev, id, &err, [](const std::string& ev) {
         if (ev == "WAIT") LogW(T(S::PLACE_FINGER));
         else if (ev == "NOMATCH") LogW(T(S::NOMATCH_RETRY));
-    });
+    }, 60000);
     switch (r) {
     case AuthResult::Match: LogW(Ts(S::MATCH_ID) + N(id)); return true;
     case AuthResult::NoDevice: Fail(Ts(S::ERR_COMM) + A2W(err)); break;

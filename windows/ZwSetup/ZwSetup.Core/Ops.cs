@@ -94,6 +94,54 @@ public sealed class Ops
         return true;
     }
 
+    // ---------- ring LED ----------
+    public record LedState(string? Proto, LedConfig Config, string Port);
+
+    /// <summary>Silent read for page loading: returns null and a reason instead of showing an error dialog.</summary>
+    public LedState? LedRead(out string reason)
+    {
+        reason = "";
+        var cfg = Config.Load(out _);
+        var diag = new StringBuilder();
+        using var dev = Device.Open(cfg.Port, cfg.UsbId, out _, diag);
+        if (dev == null) { reason = diag.ToString().Trim(); return null; }
+        var proto = dev.LedInfo();
+        var led = dev.LedGet();
+        if (proto == null || led == null) { reason = L.S("Led_OldFirmware"); return null; }
+        return new LedState(proto, led, dev.PortName);
+    }
+
+    public bool LedWrite(LedConfig led)
+    {
+        var cfg = Config.Load(out _);
+        using var dev = OpenDev(cfg.Port, cfg.UsbId, out _);
+        if (dev == null) return false;
+        foreach (var (ev, fx) in led.Fx)
+            if (!dev.LedSet(ev, fx, out var err)) { Error(L.F("ErrProtocol", err)); return false; }
+        if (!dev.LedWaitLight(led.WaitLightSec, out var werr)) { Error(L.F("ErrProtocol", werr)); return false; }
+        Log(L.S("Led_Saved"));
+        return true;
+    }
+
+    public bool LedPreview(LedFx fx)
+    {
+        var cfg = Config.Load(out _);
+        using var dev = OpenDev(cfg.Port, cfg.UsbId, out _);
+        if (dev == null) return false;
+        if (!dev.LedPlay(fx, out var err)) { Error(L.F("ErrProtocol", err)); return false; }
+        return true;
+    }
+
+    public bool LedFactoryReset()
+    {
+        var cfg = Config.Load(out _);
+        using var dev = OpenDev(cfg.Port, cfg.UsbId, out _);
+        if (dev == null) return false;
+        if (!dev.LedReset(out var err)) { Error(L.F("ErrProtocol", err)); return false; }
+        Log(L.S("Led_ResetDone"));
+        return true;
+    }
+
     public bool Enroll(int slot, bool delete, string? port = null, string? usbId = null)
     {
         if (slot < 1 || slot > 199) { Error(L.S("ErrSlot")); return false; }

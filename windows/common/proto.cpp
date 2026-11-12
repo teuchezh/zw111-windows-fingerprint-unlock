@@ -60,7 +60,7 @@ bool OpenDevice(SerialPort& port, const std::wstring& portSetting, const std::ws
 
 AuthResult RunAuth(SerialPort& port, const uint8_t kauth[32], std::atomic<bool>& cancel,
                    uint8_t kdevOut[32], int& fingerId, std::string* err,
-                   const std::function<void(const std::string&)>& onEvent) {
+                   const std::function<void(const std::string&)>& onEvent, DWORD waitMs) {
     std::string line;
     port.Purge();
     if (!port.WriteLine("NONCE")) { if (err) *err = "write"; return AuthResult::NoDevice; }
@@ -81,9 +81,11 @@ AuthResult RunAuth(SerialPort& port, const uint8_t kauth[32], std::atomic<bool>&
         if (line.compare(0, 4, "ERR ") == 0) { if (err) *err = line; return AuthResult::Error; }
     }
     if (onEvent) onEvent("WAIT");
+    ULONGLONG waitStart = GetTickCount64();
 
     for (;;) {
         if (cancel.load()) { port.WriteLine("CANCEL"); return AuthResult::Cancelled; }
+        if (waitMs && GetTickCount64() - waitStart > waitMs) { port.WriteLine("CANCEL"); return AuthResult::Timeout; }
         if (!port.ReadLine(line, 250, &ioErr)) {
             if (ioErr) { if (err) *err = "io error"; return AuthResult::NoDevice; }
             continue;

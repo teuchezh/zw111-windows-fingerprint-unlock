@@ -10,6 +10,9 @@ public enum AuthResult { Match, NoDevice, NotProvisioned, AuthFailed, Timeout, C
 
 public record DeviceInfo(bool Provisioned, int Templates);
 public record ComPortInfo(string Port, string HardwareId, string Name);
+/// <summary>Mode 1 breathing, 2 flashing, 3 on, 4 off, 5 fade in, 6 fade out; Color bit mask 1 blue, 2 green, 4 red.</summary>
+public record LedFx(int Mode, int Color, int Speed, int Count);
+public record LedConfig(Dictionary<string, LedFx> Fx, int WaitLightSec);
 
 /// <summary>Text protocol over USB CDC, see firmware/src/main.cpp.</summary>
 public sealed class Device : IDisposable
@@ -127,7 +130,7 @@ public sealed class Device : IDisposable
     public int TemplateCount() { Purge(); Send("COUNT"); var l = Expect("COUNT ", 2000, out _); return l != null && int.TryParse(l.Substring(6), out var n) ? n : -1; }
 
     /// <summary>NONCE → AUTH → wait for MATCH. onEvent gets "WAIT" / "NOMATCH".</summary>
-    public AuthResult RunAuth(byte[] kauth, CancellationToken cancel, out byte[] kdev, out int fingerId, out string err, Action<string>? onEvent = null)
+    public AuthResult RunAuth(byte[] kauth, CancellationToken cancel, out byte[] kdev, out int fingerId, out string err, Action<string>? onEvent = null, int waitMs = 60000)
     {
         kdev = new byte[32]; fingerId = 0; err = "";
         Purge(); Send("NONCE");
@@ -148,9 +151,11 @@ public sealed class Device : IDisposable
             if (sw.ElapsedMilliseconds > 12000) { err = "no AUTH reply"; return AuthResult.NoDevice; }
         }
         onEvent?.Invoke("WAIT");
+        var waitSw = Stopwatch.StartNew();
         for (;;)
         {
             if (cancel.IsCancellationRequested) { Send("CANCEL"); return AuthResult.Cancelled; }
+            if (waitMs > 0 && waitSw.ElapsedMilliseconds > waitMs) { Send("CANCEL"); return AuthResult.Timeout; }
             try { l = _port.ReadLine().TrimEnd('\r', ' '); }
             catch (TimeoutException) { continue; }
             catch (Exception e) { err = e.Message; return AuthResult.NoDevice; }
@@ -172,6 +177,42 @@ public sealed class Device : IDisposable
             if (l.StartsWith("ERR ")) { err = l; return AuthResult.Error; }
         }
     }
+
+    // ---------- ring LED ----------
+    public static readonly string[] LedEvents = { "WAIT", "MATCH", "FAIL", "ENROLL", "IDLE" };
+
+    /// <summary>"3C", "35" or "NONE"; null if the firmware is too old to know LEDINFO.</summary>
+    public string? LedInfo()
+    {
+        Purge(); Send("LEDINFO");
+        var l = Expect("LEDINFO ", 1500, out _);
+        return l?.Substring(8).Trim();
+    }
+
+    public LedConfig? LedGet()
+    {
+        Purge(); Send("LEDGET");
+        var fx = new Dictionary<string, LedFx>();
+        int wait = 0;
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 2000)
+        {
+            var l = ReadLine(500);
+            if (l == null) continue;
+            if (l == "OK") return new LedConfig(fx, wait);
+            if (l.StartsWith("ERR ")) return null;
+            var p = l.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (p.Length == 6 && p[0] == "LED")
+                fx[p[1]] = new LedFx(int.Parse(p[2]), int.Parse(p[3]), int.Parse(p[4]), int.Parse(p[5]));
+            else if (p.Length == 2 && p[0] == "LEDWAITLIGHT") wait = int.Parse(p[1]);
+        }
+        return null;
+    }
+
+    public bool LedSet(string ev, LedFx f, out string err) { Purge(); Send($"LEDSET {ev} {f.Mode} {f.Color} {f.Speed} {f.Count}"); return Expect("OK", 3000, out err) != null; }
+    public bool LedWaitLight(int sec, out string err) { Purge(); Send("LEDWAITLIGHT " + sec); return Expect("OK", 3000, out err) != null; }
+    public bool LedPlay(LedFx f, out string err) { Purge(); Send($"LEDPLAY {f.Mode} {f.Color} {f.Speed} {f.Count}"); return Expect("OK", 6000, out err) != null; }
+    public bool LedReset(out string err) { Purge(); Send("LEDRESET"); return Expect("OK", 3000, out err) != null; }
 
     public bool Provision(byte[] kdev, byte[] kauth, out string err)
     {

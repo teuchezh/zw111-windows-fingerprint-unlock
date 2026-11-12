@@ -112,7 +112,7 @@ public partial class MainWindow
     void RunSmoke()
     {
         App.SmokeLog("window loaded");
-        var pages = new[] { typeof(StatusPage), typeof(SetupPage), typeof(FingersPage), typeof(LogPage), typeof(SettingsPage) };
+        var pages = new[] { typeof(StatusPage), typeof(SetupPage), typeof(FingersPage), typeof(LedPage), typeof(LogPage), typeof(SettingsPage) };
         var steps = new Queue<(string name, Action run)>();
         foreach (var lang in new[] { "ru", "en" })
         {

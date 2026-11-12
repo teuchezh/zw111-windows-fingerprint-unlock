@@ -20,9 +20,11 @@ bool OpenDevice(SerialPort& port, const std::wstring& portSetting, const std::ws
 
 // Full handshake: NONCE -> AUTH -> wait MATCH. Blocks until a match, a timeout, an error or *cancel.
 // On Match: kdevOut (unwrapped K_dev) and fingerId are set.
+// waitMs: how long to wait for a finger after OK WAIT (0 = until cancel). The firmware itself no longer
+// times out, so interactive tools pass a limit and the credential provider passes 0.
 AuthResult RunAuth(SerialPort& port, const uint8_t kauth[32], std::atomic<bool>& cancel,
                    uint8_t kdevOut[32], int& fingerId, std::string* err = nullptr,
-                   const std::function<void(const std::string&)>& onEvent = nullptr);
+                   const std::function<void(const std::string&)>& onEvent = nullptr, DWORD waitMs = 0);
 
 bool Provision(SerialPort& port, const uint8_t kdev[32], const uint8_t kauth[32], std::string* err = nullptr);
 bool Wipe(SerialPort& port, std::string* err = nullptr);

@@ -154,6 +154,19 @@ for a domain account, `--port COM7` instead of USB-id autodetection, `--usbid "V
 `--lang en`. Other commands: `status`, `set-password`, `delete --id N`, `disable` / `enable`,
 `lang auto|ru|en`, `wipe`, `uninstall`.
 
+## Ring light
+
+The ring lights up only while Windows really waits for a finger: on the sign-in or lock screen and during a
+test or enrollment. Once you are signed in, the board turns the ring off by itself because Windows closed the
+COM port. The firmware detects the light command on its own: `0x3C` on the ZW111 or `0x35` on R503 sensors.
+
+The **"Ring light"** page in `ZwSetup.exe` sets the effect for each event: waiting for a finger, finger
+recognized, error, enrolling, idle. Each has a mode (breathing, flashing, on, off, fade in or out), one of seven
+colours and a repeat count. "Preview" plays the effect for 3 seconds without saving. Settings live on the board.
+
+"Light while waiting for at most" turns the ring off after that many seconds of waiting, for example when the
+lock screen stays up all night. A finger is still accepted, and a wrong finger turns the light back on.
+
 ## Microsoft accounts and PIN sign-in
 
 If the sign-in screen offers a PIN and shows your full name, it is most likely a Microsoft account.

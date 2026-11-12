@@ -40,6 +40,9 @@
                 <ui:NavigationViewItem Content="{Binding [Nav_Fingers], Source={x:Static core:L.I}}" TargetPageType="{x:Type pages:FingersPage}">
                     <ui:NavigationViewItem.Icon><ui:SymbolIcon Symbol="Fingerprint24" /></ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
+                <ui:NavigationViewItem Content="{Binding [Nav_Led], Source={x:Static core:L.I}}" TargetPageType="{x:Type pages:LedPage}">
+                    <ui:NavigationViewItem.Icon><ui:SymbolIcon Symbol="Lightbulb24" /></ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
                 <ui:NavigationViewItem Content="{Binding [Nav_Log], Source={x:Static core:L.I}}" TargetPageType="{x:Type pages:LogPage}">
                     <ui:NavigationViewItem.Icon><ui:SymbolIcon Symbol="DocumentText24" /></ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
