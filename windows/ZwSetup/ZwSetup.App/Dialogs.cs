@@ -15,13 +15,16 @@ public static class Dialogs
 
     public static async Task<bool> ShowAsync(string title, string text, string primary, string? close)
     {
+        // ContentDialog always shows its Close button and hides Primary when its text is empty,
+        // so a single-button dialog uses only the Close button.
+        bool single = close == null;
         var d = new ContentDialog(Host)
         {
             Title = title,
             Content = new System.Windows.Controls.TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 14 },
-            PrimaryButtonText = primary,
-            CloseButtonText = close ?? "",
-            DefaultButton = ContentDialogButton.Primary,
+            PrimaryButtonText = single ? "" : primary,
+            CloseButtonText = single ? primary : close!,
+            DefaultButton = single ? ContentDialogButton.Close : ContentDialogButton.Primary,
             DialogMaxWidth = 520,
         };
         Current = d;
