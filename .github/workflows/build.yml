@@ -13,10 +13,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - name: Build and run test vectors
+      - name: Build and run test vectors (C++)
         run: |
           g++ -O2 -Wall -o /tmp/test_crypto tests/test_crypto.cpp
           python3 tests/test_crypto.py /tmp/test_crypto
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build and run test vectors (C# core)
+        run: |
+          dotnet build windows/ZwSetup/ZwSetup.CoreCheck -c Release --nologo -v q
+          dotnet run --project windows/ZwSetup/ZwSetup.CoreCheck -c Release --no-build > /tmp/cs_vectors.txt
+          printf '#!/bin/sh\ncat /tmp/cs_vectors.txt\n' > /tmp/cs_vectors.sh && chmod +x /tmp/cs_vectors.sh
+          python3 tests/test_crypto.py /tmp/cs_vectors.sh
 
   firmware:
     name: firmware (${{ matrix.env }})
@@ -109,10 +118,26 @@ jobs:
             windows/build/zwsetup-gui.exe
           if-no-files-found: error
 
+  windows-app:
+    name: Setup app (WPF-UI, .NET 8)
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish self-contained single file
+        run: dotnet publish windows/ZwSetup/ZwSetup.App -c Release --nologo -v q
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows-app
+          path: windows/ZwSetup/ZwSetup.App/bin/Release/net8.0-windows/win-x64/publish/ZwSetup.exe
+          if-no-files-found: error
+
   release:
     name: GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [tests, firmware, windows-msvc]
+    needs: [tests, firmware, windows-msvc, windows-app]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -128,6 +153,7 @@ jobs:
           R="zw111-windows-fingerprint-unlock-${V}"
           mkdir -p "$R/windows" "$R/firmware"
           cp dist/windows-msvc/* "$R/windows/"
+          cp dist/windows-app/ZwSetup.exe "$R/windows/"
           cp dist/firmware-yd_rp2040/firmware.uf2 "$R/firmware/firmware-yd_rp2040.uf2"
           cp dist/firmware-pico/firmware.uf2 "$R/firmware/firmware-pico.uf2"
           [ -f dist/firmware-esp32s3/firmware.bin ] && cp dist/firmware-esp32s3/firmware.bin "$R/firmware/firmware-esp32s3.bin" || true

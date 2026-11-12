@@ -11,3 +11,8 @@ windows/build/gui_res.o
 *.swp
 Thumbs.db
 .DS_Store
+
+# .NET
+bin/
+obj/
+*.user

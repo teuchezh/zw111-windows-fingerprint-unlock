@@ -1,0 +1,20 @@
+<Page x:Class="ZwSetup.App.Pages.LogPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:core="clr-namespace:ZwSetup.Core;assembly=ZwSetup.Core">
+    <Grid Margin="24,16,24,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Log_Title], Source={x:Static core:L.I}}" />
+            <ui:Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding [Log_Clear], Source={x:Static core:L.I}}" Click="Clear_Click">
+                <ui:Button.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:Button.Icon>
+            </ui:Button>
+        </Grid>
+        <ui:TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                    VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" />
+    </Grid>
+</Page>

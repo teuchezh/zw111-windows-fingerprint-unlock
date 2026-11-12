@@ -1,0 +1,80 @@
+<Page x:Class="ZwSetup.App.Pages.StatusPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:core="clr-namespace:ZwSetup.Core;assembly=ZwSetup.Core">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+        <StackPanel MaxWidth="820" HorizontalAlignment="Stretch">
+            <Grid>
+                <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Status_Title], Source={x:Static core:L.I}}" />
+                <ui:Button x:Name="RefreshBtn" HorizontalAlignment="Right" VerticalAlignment="Top" Content="{Binding [Status_Refresh], Source={x:Static core:L.I}}" Click="Refresh_Click">
+                    <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowSync24" /></ui:Button.Icon>
+                </ui:Button>
+            </Grid>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Person24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Status_Config], Source={x:Static core:L.I}}" />
+                        <TextBlock x:Name="CfgText" Style="{StaticResource CardDesc}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Shield24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Status_Dll], Source={x:Static core:L.I}}" />
+                        <TextBlock x:Name="DllText" Style="{StaticResource CardDesc}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <StackPanel Orientation="Horizontal">
+                    <ui:Button x:Name="RegisterBtn" Appearance="Primary" Margin="0,0,8,0" Content="{Binding [Status_Register], Source={x:Static core:L.I}}" Click="Register_Click" />
+                    <ui:Button x:Name="UnregisterBtn" Content="{Binding [Status_Unregister], Source={x:Static core:L.I}}" Click="Unregister_Click" />
+                </StackPanel>
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Desktop24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Status_Tile], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Status_TileDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="TileSwitch" Click="Tile_Click" />
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Fingerprint24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Status_Device], Source={x:Static core:L.I}}" />
+                        <TextBlock x:Name="DeviceText" Style="{StaticResource CardDesc}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+            </ui:CardControl>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text="{Binding [Status_Ports], Source={x:Static core:L.I}}" />
+            <ItemsControl x:Name="PortsList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ui:CardControl Style="{StaticResource Card}">
+                            <ui:CardControl.Icon><ui:SymbolIcon Symbol="SerialPort24" /></ui:CardControl.Icon>
+                            <ui:CardControl.Header>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding Name}" />
+                                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding HardwareId}" />
+                                </StackPanel>
+                            </ui:CardControl.Header>
+                            <TextBlock Text="{Binding Port}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </ui:CardControl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="NoPortsText" Style="{StaticResource CardDesc}" Text="{Binding [Status_NoPorts], Source={x:Static core:L.I}}" Visibility="Collapsed" />
+        </StackPanel>
+    </ScrollViewer>
+</Page>

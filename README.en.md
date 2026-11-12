@@ -23,7 +23,8 @@ interactive logon through LSA, exactly as if you had typed the password.
 | `firmware/` | PlatformIO project: firmware for RP2040 (`yd_rp2040`, `pico`) and ESP32-S3 (`esp32s3`). |
 | `windows/credprov/` | Credential Provider: COM DLL `ZwCredProv.dll`, loaded by LogonUI. |
 | `windows/setup/` | `zwsetup.exe`: console tool for provisioning, enrollment and testing. |
-| `windows/gui/` | `zwsetup-gui.exe`: the same in one window, asks for administrator rights itself. |
+| `windows/ZwSetup/` | `ZwSetup.exe`: the main setup app on .NET 8 + WPF-UI (Fluent style, navigation, dark/light themes, RU/EN). |
+| `windows/gui/` | `zwsetup-gui.exe`: plain Win32 window, fallback without .NET. |
 | `windows/common/` | Shared code: COM port, registry + DPAPI, AES-GCM, protocol, string table (RU/EN). |
 | `windows/build/` | Prebuilt x64 `ZwCredProv.dll`, `zwsetup.exe`, `zwsetup-gui.exe` (mingw-w64). |
 | `tests/` | SHA-256/HMAC check against Python `hashlib`. |
@@ -72,9 +73,9 @@ Sensor Library** is used (default module password `0x00000000`, 57600 baud).
 ## Prebuilt binaries and CI
 
 GitHub Actions builds the firmware (all environments), the Windows part (MSVC and mingw-w64) and
-runs the crypto check on every push. Artifacts are attached to every run on the Actions tab.
+the `ZwSetup.exe` app and runs the crypto checks (C++ and C#) on every push. Artifacts are attached to every run on the Actions tab.
 Pushing a tag like `v1.0` creates a release with an archive containing `ZwCredProv.dll`,
-`zwsetup.exe`, `zwsetup-gui.exe` and the firmware UF2 files.
+`zwsetup.exe`, `zwsetup-gui.exe`, `ZwSetup.exe` and the firmware UF2 files.
 
 ## Step 1. Firmware (PlatformIO)
 
@@ -102,7 +103,25 @@ Prebuilt binaries are in `windows/build/`. To rebuild:
 
 ## Step 3. Setup
 
-### Option A: the `zwsetup-gui.exe` window
+### Option A: the `ZwSetup.exe` app (recommended)
+
+Download `ZwSetup.exe` from a release or the `windows-app` artifact on the Actions tab and put it next to
+`ZwCredProv.dll`. It is a self-contained .NET 8 executable, nothing to install. Fluent-style UI: sections
+"Status", "Setup", "Fingerprints", "Log" and "Settings" on the left, cards on the right.
+
+1. **Setup**: user name, domain, password twice, card "1. Set up device and password". Microsoft accounts
+   are detected automatically. Hold USR on the board when asked and press OK.
+2. **Fingerprints**: slot and card "2. Enroll finger", again with USR held.
+3. **Setup** → "3. Test": place a finger, the app decrypts the password and verifies it with LogonUser.
+4. **Status** → "Register DLL", then Win+L.
+
+"Settings" holds the language (also applied to the tile), window theme, debug log and settings removal.
+The "Sign-in tile" switch on the Status page hides the tile temporarily without removing the settings.
+
+Rebuild: `dotnet publish windows/ZwSetup/ZwSetup.App -c Release` (.NET 8 SDK; published as a single
+self-contained x64 file).
+
+### Option B: the `zwsetup-gui.exe` window (no .NET)
 
 Run `windows\build\zwsetup-gui.exe` (it requests administrator rights; `ZwCredProv.dll` must be next
 to it). Then the buttons in order:
@@ -118,7 +137,7 @@ to it). Then the buttons in order:
 by the PlatformIO monitor, the status says so. The language selector switches the window, the console
 tool and the sign-in tile (saved as `Lang` in the registry: `auto`, `ru` or `en`).
 
-### Option B: console `zwsetup.exe` (PowerShell as administrator)
+### Option C: console `zwsetup.exe` (PowerShell as administrator)
 
 ```bat
 cd windows\build

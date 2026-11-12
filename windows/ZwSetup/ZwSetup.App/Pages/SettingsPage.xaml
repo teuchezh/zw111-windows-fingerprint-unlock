@@ -1,0 +1,75 @@
+<Page x:Class="ZwSetup.App.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:core="clr-namespace:ZwSetup.Core;assembly=ZwSetup.Core">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,16,24,24">
+        <StackPanel MaxWidth="820">
+            <TextBlock Style="{StaticResource PageTitle}" Text="{Binding [Settings_Title], Source={x:Static core:L.I}}" />
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Globe24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Settings_Language], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Settings_LanguageDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="LangCombo" Width="200" SelectionChanged="Lang_Changed">
+                    <ComboBoxItem Content="{Binding [Settings_LangAuto], Source={x:Static core:L.I}}" />
+                    <ComboBoxItem Content="Русский" />
+                    <ComboBoxItem Content="English" />
+                </ComboBox>
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="PaintBrush24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Settings_Theme], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Settings_ThemeDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ComboBox x:Name="ThemeCombo" Width="200" SelectionChanged="Theme_Changed">
+                    <ComboBoxItem Content="{Binding [Settings_ThemeAuto], Source={x:Static core:L.I}}" />
+                    <ComboBoxItem Content="{Binding [Settings_ThemeDark], Source={x:Static core:L.I}}" />
+                    <ComboBoxItem Content="{Binding [Settings_ThemeLight], Source={x:Static core:L.I}}" />
+                </ComboBox>
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Bug24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Settings_Debug], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Settings_DebugDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:ToggleSwitch x:Name="DebugSwitch" Click="Debug_Click" />
+            </ui:CardControl>
+
+            <TextBlock Style="{StaticResource SectionTitle}" Text=" " />
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Settings_Remove], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Settings_RemoveDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <ui:Button Appearance="Danger" MinWidth="120" Content="{Binding [Setup_Run], Source={x:Static core:L.I}}" Click="Remove_Click" />
+            </ui:CardControl>
+
+            <ui:CardControl Style="{StaticResource Card}">
+                <ui:CardControl.Icon><ui:SymbolIcon Symbol="Info24" /></ui:CardControl.Icon>
+                <ui:CardControl.Header>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Settings_About], Source={x:Static core:L.I}}" />
+                        <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Settings_AboutDesc], Source={x:Static core:L.I}}" />
+                    </StackPanel>
+                </ui:CardControl.Header>
+                <TextBlock x:Name="VersionText" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+            </ui:CardControl>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
