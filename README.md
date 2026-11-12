@@ -1,5 +1,7 @@
 # Вход в Windows по отпечатку пальца: ZW111 + RP2040 + свой Credential Provider
 
+[![build](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml/badge.svg)](https://github.com/teuchezh/zw111-windows-fingerprint-unlock/actions/workflows/build.yml)
+
 Это «правильный» вариант: никакой эмуляции клавиатуры. На экране входа и блокировки
 появляется своя плитка «Отпечаток пальца». Когда сканер ZW111 узнаёт палец, Windows
 выполняет обычный интерактивный вход через LSA, как если бы вы ввели пароль.
@@ -99,6 +101,18 @@ pio device monitor
 В контейнере, где готовился проект, не было доступа к GitHub и реестру PlatformIO, поэтому
 `pio run` здесь не запускался. Код прошивки проверен компилятором на хосте с заглушками Arduino-API
 для обоих окружений; расхождения возможны только в версиях библиотек, не в логике.
+
+## Готовые сборки и CI
+
+GitHub Actions на каждый пуш собирает прошивку (PlatformIO, все окружения), Windows-часть
+(MSVC и mingw-w64) и гоняет проверку криптографии. Готовые файлы лежат в артефактах каждого запуска
+на вкладке Actions. При пуше тега вида `v1.0` создаётся релиз с архивом, в котором `ZwCredProv.dll`,
+`zwsetup.exe`, `zwsetup-gui.exe` и UF2-файлы прошивки.
+
+```bash
+git tag v1.0
+git push origin v1.0
+```
 
 ## Шаг 2. Сборка Windows-части
 

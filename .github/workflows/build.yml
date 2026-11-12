@@ -1,0 +1,129 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: crypto self-test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run test vectors
+        run: |
+          g++ -O2 -Wall -o /tmp/test_crypto tests/test_crypto.cpp
+          python3 tests/test_crypto.py /tmp/test_crypto
+
+  firmware:
+    name: firmware (${{ matrix.env }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: yd_rp2040
+            artifact: firmware/.pio/build/yd_rp2040/firmware.uf2
+            experimental: false
+          - env: pico
+            artifact: firmware/.pio/build/pico/firmware.uf2
+            experimental: false
+          - env: esp32s3
+            artifact: firmware/.pio/build/esp32s3/firmware.bin
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio/libdeps
+          key: pio-${{ runner.os }}-${{ matrix.env }}-${{ hashFiles('firmware/platformio.ini') }}
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+      - name: Build
+        working-directory: firmware
+        run: pio run -e ${{ matrix.env }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.env }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  windows-msvc:
+    name: Windows binaries (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build
+        working-directory: windows
+        shell: cmd
+        run: build.bat
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msvc
+          path: |
+            windows/build/ZwCredProv.dll
+            windows/build/zwsetup.exe
+            windows/build/zwsetup-gui.exe
+          if-no-files-found: error
+
+  windows-mingw:
+    name: Windows binaries (mingw-w64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mingw-w64
+        run: sudo apt-get update && sudo apt-get install -y g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+      - name: Build
+        working-directory: windows
+        run: make
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-mingw
+          path: |
+            windows/build/ZwCredProv.dll
+            windows/build/zwsetup.exe
+            windows/build/zwsetup-gui.exe
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [tests, firmware, windows-msvc]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Assemble release archive
+        run: |
+          set -e
+          V="${GITHUB_REF_NAME}"
+          R="zw111-windows-fingerprint-unlock-${V}"
+          mkdir -p "$R/windows" "$R/firmware"
+          cp dist/windows-msvc/* "$R/windows/"
+          cp dist/firmware-yd_rp2040/firmware.uf2 "$R/firmware/firmware-yd_rp2040.uf2"
+          cp dist/firmware-pico/firmware.uf2 "$R/firmware/firmware-pico.uf2"
+          [ -f dist/firmware-esp32s3/firmware.bin ] && cp dist/firmware-esp32s3/firmware.bin "$R/firmware/firmware-esp32s3.bin" || true
+          cp README.md LICENSE "$R/"
+          zip -r "$R.zip" "$R"
+          ls -la "$R.zip"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: zw111-windows-fingerprint-unlock-*.zip
+          generate_release_notes: true
