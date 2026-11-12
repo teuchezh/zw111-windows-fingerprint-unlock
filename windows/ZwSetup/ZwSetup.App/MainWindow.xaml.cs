@@ -126,6 +126,11 @@ public partial class MainWindow
         steps.Enqueue(("check scroll", CheckScroll));
         steps.Enqueue(("wheel", WheelOverPage));
         steps.Enqueue(("check wheel", CheckWheeled));
+        steps.Enqueue(("page LedPage (layout)", () => Nav.Navigate(typeof(LedPage))));
+        steps.Enqueue(("check led rows 900", () => ((LedPage)FindPage()!).SelfCheck()));
+        steps.Enqueue(("maximize", () => WindowState = WindowState.Maximized));
+        steps.Enqueue(("check led rows max", () => ((LedPage)FindPage()!).SelfCheck()));
+        steps.Enqueue(("restore", () => WindowState = WindowState.Normal));
         steps.Enqueue(("theme light", () => App.ApplyTheme("light")));
         steps.Enqueue(("page StatusPage", () => Nav.Navigate(typeof(StatusPage))));
         steps.Enqueue(("theme dark", () => App.ApplyTheme("dark")));

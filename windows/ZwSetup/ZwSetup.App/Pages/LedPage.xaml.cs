@@ -39,13 +39,18 @@ public partial class LedPage : Page
         ["ENROLL"] = SymbolRegular.Add24, ["IDLE"] = SymbolRegular.WeatherMoon24,
     };
 
+    // Each effect row is a Card with a 3-column grid: icon | title+description | controls.
+    // When the page is narrow the controls move to a second line under the title (see Relayout).
+    readonly List<(Grid grid, FrameworkElement controls, FrameworkElement header, Card card)> _layout = new();
+    const double WideThreshold = 860;   // width of the effects list below which controls wrap
+
     void BuildRows()
     {
         foreach (var ev in Device.LedEvents)
         {
-            var mode = new System.Windows.Controls.ComboBox { Width = 160, Margin = new Thickness(0, 0, 8, 0) };
+            var mode = new System.Windows.Controls.ComboBox { Width = 150, Margin = new Thickness(0, 0, 8, 0) };
             for (int i = 1; i <= 6; i++) mode.Items.Add(L.S("Led_Mode" + i));
-            var color = new System.Windows.Controls.ComboBox { Width = 140, Margin = new Thickness(0, 0, 8, 0) };
+            var color = new System.Windows.Controls.ComboBox { Width = 130, Margin = new Thickness(0, 0, 8, 0) };
             for (int i = 1; i <= 7; i++) color.Items.Add(L.S("Led_Color" + i));
             var speed = new Wpf.Ui.Controls.TextBox { Width = 64, Margin = new Thickness(0, 0, 8, 0), ToolTip = L.S("Led_Speed"), PlaceholderText = L.S("Led_Speed") };
             var count = new Wpf.Ui.Controls.TextBox { Width = 64, Margin = new Thickness(0, 0, 8, 0), ToolTip = L.S("Led_CountTip"), PlaceholderText = L.S("Led_Count") };
@@ -53,18 +58,55 @@ public partial class LedPage : Page
             var preview = new Wpf.Ui.Controls.Button { Content = L.S("Led_Preview"), MinWidth = 96 };
             preview.Click += (_, _) => { var fx = row.Read(); Shell.I.Run(() => Shell.I.Ops.LedPreview(fx), refreshStatus: false); };
 
-            var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            right.Children.Add(mode); right.Children.Add(color); right.Children.Add(speed); right.Children.Add(count); right.Children.Add(preview);
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            controls.Children.Add(mode); controls.Children.Add(color); controls.Children.Add(speed); controls.Children.Add(count); controls.Children.Add(preview);
 
-            var header = new StackPanel();
+            var header = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
             header.Children.Add(new System.Windows.Controls.TextBlock { Text = L.S("Led_Ev_" + ev), Style = (Style)FindResource("CardTitle") });
             header.Children.Add(new System.Windows.Controls.TextBlock { Text = L.S("Led_Ev_" + ev + "_Desc"), Style = (Style)FindResource("CardDesc") });
 
-            var card = new CardControl { Style = (Style)FindResource("Card"), Header = header, Content = right, Icon = new SymbolIcon { Symbol = Icons[ev] } };
+            var icon = new SymbolIcon { Symbol = Icons[ev], FontSize = 24, Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Center };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Grid.SetColumn(icon, 0); Grid.SetColumn(header, 1);
+            grid.Children.Add(icon); grid.Children.Add(header); grid.Children.Add(controls);
+
+            var card = new Card { Content = grid, Margin = new Thickness(0, 0, 0, 4), Padding = new Thickness(16, 12, 16, 12) };
             EffectCards.Children.Add(card);
+            _layout.Add((grid, controls, header, card));
             row.Write(new LedFx(4, 1, 0, 0));
             _rows.Add(row);
         }
+        EffectCards.SizeChanged += (_, _) => Relayout();
+        Relayout();
+    }
+
+    void Relayout()
+    {
+        bool wide = EffectCards.ActualWidth == 0 || EffectCards.ActualWidth >= WideThreshold;
+        foreach (var (_, controls, _, _) in _layout)
+        {
+            if (wide) { Grid.SetRow(controls, 0); Grid.SetColumn(controls, 2); Grid.SetColumnSpan(controls, 1); controls.Margin = new Thickness(0); }
+            else { Grid.SetRow(controls, 1); Grid.SetColumn(controls, 1); Grid.SetColumnSpan(controls, 2); controls.Margin = new Thickness(0, 10, 0, 0); }
+        }
+    }
+
+    /// <summary>Smoke test: every control panel must fit inside its card.</summary>
+    public void SelfCheck()
+    {
+        foreach (var (_, controls, header, card) in _layout)
+        {
+            var right = controls.TransformToAncestor(card).Transform(new Point(controls.ActualWidth, 0)).X;
+            if (controls.ActualWidth <= 0 || right > card.ActualWidth + 1)
+                throw new InvalidOperationException($"LED row overflows its card: controls end at {right:F0}, card width {card.ActualWidth:F0}");
+            if (header.ActualWidth < 80) throw new InvalidOperationException($"LED row title squeezed to {header.ActualWidth:F0}px");
+        }
+        App.SmokeLog($"led rows ok, list width {EffectCards.ActualWidth:F0}, wide={EffectCards.ActualWidth >= WideThreshold}");
     }
 
     void ApplyProto(string? proto)
