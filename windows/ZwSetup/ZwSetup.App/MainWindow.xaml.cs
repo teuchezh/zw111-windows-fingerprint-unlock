@@ -35,6 +35,7 @@ public partial class MainWindow
             Shell.I.Log(L.S("Intro"));
             if (!Win.IsAdministrator()) Shell.I.Log(L.S("NotAdmin"));
             Shell.I.RefreshStatus();
+            Task.Run(() => Shell.I.Ops.EnsureUserSid());
             if (App.Smoke) { Width = 900; Height = 700; RunSmoke(); }
         };
     }

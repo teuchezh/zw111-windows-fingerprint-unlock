@@ -1,6 +1,8 @@
 #include "Provider.h"
 #include "helpers.h"
 #include "guid.h"
+#include "../common/broker.h"
+#include "../common/i18n.h"
 #include <propkey.h>
 #include <shlwapi.h>
 
@@ -27,8 +29,27 @@ IFACEMETHODIMP ZwProvider::QueryInterface(REFIID riid, void** ppv) {
     AddRef(); return S_OK;
 }
 
-IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, DWORD) {
-    Log(L"SetUsageScenario %d", (int)cpus);
+// CREDUIWIN_* flags (wincred.h), spelled out because not every SDK has all of them.
+static const DWORD kCredUiGeneric = 0x1, kCredUiInCredOnly = 0x20, kCredUiEnumerateAdmins = 0x100, kCredUiPack32Wow = 0x10000000;
+
+IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, DWORD dwFlags) {
+    Log(L"SetUsageScenario %d flags 0x%08x", (int)cpus, dwFlags);
+    if (cpus == CPUS_CREDUI) {
+        // Plain-text "generic" credentials, 32-bit packing, admin-only (UAC) and pre-filled prompts are not ours.
+        if (dwFlags & (kCredUiGeneric | kCredUiInCredOnly | kCredUiEnumerateAdmins | kCredUiPack32Wow)) return E_NOTIMPL;
+        // Here the provider runs as the user: the SYSTEM service supplies the settings and the password.
+        BrokerInfo info; std::string err;
+        if (!BrokerQueryInfo(info, &err) || !info.enabled || info.user.empty()) {
+            Log(L"CredUI: broker unavailable or disabled (%S)", err.c_str());
+            return E_NOTIMPL;
+        }
+        SetLangFromSetting(info.lang);
+        LogEnable(info.debug);
+        Config c; c.user = info.user; c.domain = info.domain; c.userSid = info.sid; c.enabled = true; c.credUiEnabled = true;
+        _cpus = cpus;
+        if (!_cred) _cred = new ZwCredential(this, cpus, c, info.sid);
+        return S_OK;
+    }
     switch (cpus) {
     case CPUS_LOGON:
     case CPUS_UNLOCK_WORKSTATION:

@@ -87,6 +87,7 @@ public sealed class Ops
             Crypto.SealPassword(s, kdev, inp.Password);
         }
         finally { CryptographicOperations.ZeroMemory(kdev); }
+        cfg.UserSid = Identity.SidIfCurrentUser(cfg) ?? "";
         try { cfg.StoreSecrets(s); cfg.Save(); }
         catch (Exception e) { Error(L.F("ErrSave", e.Message)); return false; }
         Log(L.S("CfgSaved"));
@@ -356,9 +357,48 @@ public sealed class Ops
         return true;
     }
 
+    /// <summary>Fills in UserSid for configurations made before it existed, when this app runs as that user.</summary>
+    public void EnsureUserSid()
+    {
+        try
+        {
+            var cfg = Config.Load(out bool exists);
+            if (!exists || cfg.UserSid.Length > 0 || !cfg.IsComplete) return;
+            var sid = Identity.SidIfCurrentUser(cfg);
+            if (sid == null) return;
+            cfg.UserSid = sid; cfg.Save();
+        }
+        catch { }
+    }
+
+    public bool SetCredUi(bool on)
+    {
+        var cfg = Config.Load(out bool exists);
+        if (!exists || !cfg.IsComplete) { Error(L.S("Settings_NeedConfig")); return false; }
+        if (on)
+        {
+            if (cfg.UserSid.Length == 0) cfg.UserSid = Identity.SidIfCurrentUser(cfg) ?? "";
+            if (cfg.UserSid.Length == 0) { Error(L.S("Cu_NoSid")); return false; }
+            if (!Ask(L.S("Cu_Confirm"))) return false;
+            if (!BrokerService.Install(out var err)) { Error(L.F("Cu_InstallFail", err)); return false; }
+            cfg.CredUiEnabled = true;
+            try { cfg.Save(); } catch (Exception e) { Error(L.F("ErrSave", e.Message)); return false; }
+            Log(L.S("Cu_On"));
+        }
+        else
+        {
+            cfg.CredUiEnabled = false;
+            try { cfg.Save(); } catch (Exception e) { Error(L.F("ErrSave", e.Message)); return false; }
+            if (!BrokerService.Uninstall(out var err)) { Error(L.F("Cu_RemoveFail", err)); return false; }
+            Log(L.S("Cu_Off"));
+        }
+        return true;
+    }
+
     public bool RemoveConfig()
     {
         if (!Ask(L.S("RemoveConfirm"))) return false;
+        BrokerService.Uninstall(out _);
         Log(L.S(Config.Delete() ? "CfgDeleted" : "NothingToDelete"));
         return true;
     }

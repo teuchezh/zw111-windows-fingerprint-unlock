@@ -5,6 +5,7 @@
 #include "../common/proto.h"
 #include "../common/sha256.h"
 #include "../common/i18n.h"
+#include "../common/broker.h"
 #include <shlwapi.h>
 #include <sddl.h>
 #include <strsafe.h>
@@ -25,7 +26,7 @@ static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR s_fields[FI_NUM_FIELDS] = {
 };
 const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* GetFieldDescriptors() { return s_fields; }
 
-ZwCredential::ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const Config& cfg)
+ZwCredential::ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const Config& cfg, const std::wstring& sidOverride)
     : _provider(provider), _cpus(cpus), _cfg(cfg) {
     _domain = EffectiveDomain(cfg);
     _status = T(S::CP_CONNECTING);
@@ -34,7 +35,9 @@ ZwCredential::ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENA
     std::wstring qualified = _domain + L"\\" + cfg.user;
     BYTE sidBuf[SECURITY_MAX_SID_SIZE]; DWORD cbSid = sizeof(sidBuf);
     wchar_t refDom[256]; DWORD cchDom = 256; SID_NAME_USE use;
-    if (LookupAccountNameW(nullptr, qualified.c_str(), sidBuf, &cbSid, refDom, &cchDom, &use)) {
+    if (!sidOverride.empty()) _sid = sidOverride;
+    else if (!cfg.userSid.empty()) _sid = cfg.userSid;
+    else if (LookupAccountNameW(nullptr, qualified.c_str(), sidBuf, &cbSid, refDom, &cchDom, &use)) {
         LPWSTR s = nullptr;
         if (ConvertSidToStringSidW(sidBuf, &s)) { _sid = s; LocalFree(s); }
     }
@@ -221,7 +224,59 @@ void ZwCredential::StopWorker() {
 }
 
 // Worker: find the device, run handshakes until a finger matches, hand the password to GetSerialization.
+void ZwCredential::BrokerWorker() {
+    Log(L"broker worker start");
+    while (!_stop) {
+        std::wstring pw; std::string err;
+        _cancelAuth = false;
+        BrokerResult r = BrokerAuthenticate(_cancelAuth, pw, err, [this](const std::string& ev) {
+            if (ev == "WAIT" || ev == "READY") SetStatus(T(S::CP_TOUCH), true);
+            else if (ev == "NOMATCH") SetStatus(T(S::CP_NOMATCH), true);
+            else if (ev.compare(0, 7, "LOCKED ") == 0) {
+                wchar_t msg[160];
+                StringCchPrintfW(msg, 160, T(S::CP_LOCKED_FMT), (unsigned)atoi(ev.c_str() + 7));
+                SetStatus(msg, true);
+            }
+        });
+        if (_stop) { if (!pw.empty()) SecureZeroMemory(&pw[0], pw.size() * sizeof(wchar_t)); break; }
+        Log(L"broker result %d (%S)", (int)r, err.c_str());
+        switch (r) {
+        case BrokerResult::Password:
+            {
+                std::lock_guard<std::mutex> g(_mtx);
+                _password = pw; _matched = true; _status = T(S::CP_MATCHED);
+            }
+            SecureZeroMemory(&pw[0], pw.size() * sizeof(wchar_t));
+            NotifyProvider();
+            // CredUI collects the credential with GetSerialization; wait a while before offering another round.
+            if (WaitForSingleObject(_hRestart, 60000) == WAIT_TIMEOUT) {
+                std::lock_guard<std::mutex> g(_mtx);
+                if (_matched) { _matched = false; if (!_password.empty()) SecureZeroMemory(&_password[0], _password.size() * sizeof(wchar_t)); _password.clear(); }
+            }
+            break;
+        case BrokerResult::Disabled:
+        case BrokerResult::Refused:
+            SetStatus(T(S::CP_SVC_REFUSED), true);
+            return;                                   // nothing will change while this prompt is open
+        case BrokerResult::NoDevice:
+            SetStatus(T(S::CP_NO_DEVICE), true);
+            for (int i = 0; i < 30 && !_stop; i++) Sleep(100);
+            break;
+        case BrokerResult::Timeout:
+        case BrokerResult::Cancelled:
+            break;
+        case BrokerResult::Error:
+            if (err.compare(0, 6, "FINGER") == 0) SetStatus(T(S::CP_FINGER_DENIED2), true);
+            else if (err == "service not running") SetStatus(T(S::CP_SVC_DOWN), true);
+            for (int i = 0; i < 50 && !_stop; i++) Sleep(100);
+            break;
+        }
+    }
+    Log(L"broker worker stop");
+}
+
 void ZwCredential::WorkerMain() {
+    if (_cpus == CPUS_CREDUI) { BrokerWorker(); return; }
     Log(L"worker start");
     Secrets secrets;
     std::wstring err;

@@ -5,7 +5,7 @@ if not exist build mkdir build
 set CL_FLAGS=/nologo /utf-8 /O2 /EHsc /std:c++17 /DUNICODE /D_UNICODE /D_WIN32_WINNT=0x0A00 /W3 /MT
 set LIBS=ole32.lib oleaut32.lib uuid.lib secur32.lib advapi32.lib crypt32.lib bcrypt.lib setupapi.lib shlwapi.lib gdi32.lib shell32.lib user32.lib netapi32.lib
 
-cl %CL_FLAGS% /LD /Fe:build\ZwCredProv.dll credprov\Dll.cpp credprov\Provider.cpp credprov\Credential.cpp credprov\helpers.cpp common\serial.cpp common\config.cpp common\proto.cpp common\i18n.cpp /link /DEF:credprov\ZwCredProv.def %LIBS%
+cl %CL_FLAGS% /LD /Fe:build\ZwCredProv.dll credprov\Dll.cpp credprov\Provider.cpp credprov\Credential.cpp credprov\helpers.cpp common\broker_client.cpp common\serial.cpp common\config.cpp common\proto.cpp common\i18n.cpp /link /DEF:credprov\ZwCredProv.def %LIBS%
 if errorlevel 1 goto :fail
 
 rc /nologo /fo build\cli_res.res setup\zwsetup.rc
@@ -19,9 +19,12 @@ cl %CL_FLAGS% /Fe:build\zwsetup-gui.exe gui\main.cpp common\serial.cpp common\co
 if errorlevel 1 goto :fail
 del /q build\gui_res.res build\cli_res.res 2>nul
 
+cl %CL_FLAGS% /Fe:build\ZwCredSvc.exe service\zwcredsvc.cpp common\serial.cpp common\config.cpp common\proto.cpp common\i18n.cpp /link %LIBS%
+if errorlevel 1 goto :fail
+
 del /q *.obj 2>nul
 echo.
-echo OK: build\ZwCredProv.dll  build\zwsetup.exe  build\zwsetup-gui.exe
+echo OK: build\ZwCredProv.dll  build\zwsetup.exe  build\zwsetup-gui.exe  build\ZwCredSvc.exe
 exit /b 0
 :fail
 echo BUILD FAILED

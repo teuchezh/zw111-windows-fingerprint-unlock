@@ -18,6 +18,8 @@ struct Config {
     bool enabled = true;
     bool debug = false;
     std::wstring lang = L"auto";                 // "auto" | "ru" | "en"
+    std::wstring userSid;                        // SID of the configured account (written by ZwSetup)
+    bool credUiEnabled = false;                  // allow fingerprint sign-in in Windows Security (CredUI) prompts
     std::vector<uint8_t> blob;                     // DPAPI-protected Secrets
 };
 

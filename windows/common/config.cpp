@@ -75,6 +75,8 @@ bool LoadConfig(Config& cfg, std::wstring* err) {
     if (RegDword(k, L"Enabled", d)) cfg.enabled = d != 0;
     if (RegDword(k, L"Debug", d)) cfg.debug = d != 0;
     if (RegStr(k, L"Lang", s)) cfg.lang = s;
+    if (RegStr(k, L"UserSid", s)) cfg.userSid = s;
+    if (RegDword(k, L"CredUiEnabled", d)) cfg.credUiEnabled = d != 0;
     SetLangFromSetting(cfg.lang);
     DWORD cb = 0, t = 0;
     if (RegQueryValueExW(k, L"Blob", nullptr, &t, nullptr, &cb) == ERROR_SUCCESS && t == REG_BINARY && cb > 0) {
@@ -104,6 +106,8 @@ bool SaveConfig(const Config& cfg, std::wstring* err) {
     setStr(L"Port", cfg.port); setStr(L"UsbId", cfg.usbId); setStr(L"User", cfg.user); setStr(L"Domain", cfg.domain);
     setDw(L"FingerId", cfg.fingerId); setDw(L"Enabled", cfg.enabled ? 1 : 0); setDw(L"Debug", cfg.debug ? 1 : 0);
     setStr(L"Lang", cfg.lang);
+    if (!cfg.userSid.empty()) setStr(L"UserSid", cfg.userSid);
+    setDw(L"CredUiEnabled", cfg.credUiEnabled ? 1 : 0);
     RegSetValueExW(k, L"Blob", 0, REG_BINARY, cfg.blob.data(), (DWORD)cfg.blob.size());
     RegCloseKey(k);
     // Re-apply the DACL explicitly in case the key already existed with a permissive one.

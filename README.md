@@ -25,6 +25,7 @@ interactive logon through LSA, exactly as if you had typed the password.
 | `firmware/` | PlatformIO project: firmware for RP2040 (`yd_rp2040`, `pico`) and ESP32-S3 (`esp32s3`). |
 | `windows/credprov/` | Credential Provider: COM DLL `ZwCredProv.dll`, loaded by LogonUI. |
 | `windows/setup/` | `zwsetup.exe`: console tool for provisioning, enrollment and testing. |
+| `windows/service/` | `ZwCredSvc.exe`: optional SYSTEM service for sign-in in Windows Security prompts. |
 | `windows/ZwSetup/` | `ZwSetup.exe`: the main setup app on .NET 8 + WPF-UI (Fluent style, navigation, dark/light themes, RU/EN). |
 | `windows/gui/` | `zwsetup-gui.exe`: plain Win32 window, fallback without .NET. |
 | `windows/common/` | Shared code: COM port, registry + DPAPI, AES-GCM, protocol, string table (RU/EN). |
@@ -186,6 +187,22 @@ lock screen stays up all night. A finger is still accepted, and a wrong finger t
 - **Rejected sign-in.** If Windows rejects the stored password (usually after a password change), the Status
   page shows a warning with a "Change password" button.
 - The app refreshes the status by itself when the board is plugged in or out.
+
+## Sign-in in Windows Security prompts (optional)
+
+Chrome, Edge and other apps ask you to confirm it's you in a "Windows Security" prompt before showing saved
+passwords. With **Settings → "Sign-in in Windows Security prompts"** a "Fingerprint" tile appears there under
+"More choices".
+
+In those prompts the provider runs as you and cannot read the protected keys, so a small service, **ZwCredSvc**
+(SYSTEM), does the talking to the board. It answers only the system prompt host
+`%SystemRoot%\System32\CredentialUIBroker.exe` running as the configured account, and only after a matching
+finger. The toggle installs the service to `%ProgramFiles%\ZwCredProv` and starts it; turning it off removes it.
+`ZwCredSvc.exe` must lie next to `ZwSetup.exe`.
+
+**The risk:** the app that opened such a prompt receives your Windows password, exactly as if you had typed it.
+Any program can open one, so only touch the sensor for prompts you expect. The option is off by default.
+Generic (plain user name and password), administrator-elevation and pre-filled prompts are not supported.
 
 ## Microsoft accounts and PIN sign-in
 

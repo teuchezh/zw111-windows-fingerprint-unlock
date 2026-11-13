@@ -7,9 +7,9 @@ LDFLAGS  ?= -static -static-libgcc -static-libstdc++
 LIBS      = -lole32 -loleaut32 -luuid -lsecur32 -ladvapi32 -lcrypt32 -lbcrypt -lsetupapi -lshlwapi -lgdi32 -lshell32 -lcredui -lnetapi32
 
 COMMON   = common/serial.cpp common/config.cpp common/proto.cpp common/i18n.cpp
-CP_SRC   = credprov/Dll.cpp credprov/Provider.cpp credprov/Credential.cpp credprov/helpers.cpp
+CP_SRC   = credprov/Dll.cpp credprov/Provider.cpp credprov/Credential.cpp credprov/helpers.cpp common/broker_client.cpp
 
-all: build/ZwCredProv.dll build/zwsetup.exe build/zwsetup-gui.exe
+all: build/ZwCredProv.dll build/zwsetup.exe build/zwsetup-gui.exe build/ZwCredSvc.exe
 
 build:
 	mkdir -p build
@@ -26,6 +26,9 @@ build/zwsetup-gui.exe: gui/main.cpp gui/zwsetup-gui.rc gui/zwsetup-gui.manifest 
 	$(WINDRES) -c 65001 -I gui -o build/gui_res.o gui/zwsetup-gui.rc
 	$(CXX) $(CXXFLAGS) -mwindows -o $@ gui/main.cpp $(COMMON) build/gui_res.o $(LDFLAGS) $(LIBS) -lcomctl32 -luser32
 	rm -f build/gui_res.o
+
+build/ZwCredSvc.exe: service/zwcredsvc.cpp common/broker.h $(COMMON) | build
+	$(CXX) $(CXXFLAGS) -o $@ service/zwcredsvc.cpp $(COMMON) $(LDFLAGS) $(LIBS)
 
 clean:
 	rm -rf build

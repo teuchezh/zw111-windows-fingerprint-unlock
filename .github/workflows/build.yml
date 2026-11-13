@@ -105,6 +105,7 @@ jobs:
           name: windows-msvc
           path: |
             windows/build/ZwCredProv.dll
+            windows/build/ZwCredSvc.exe
             windows/build/zwsetup.exe
             windows/build/zwsetup-gui.exe
           if-no-files-found: error
@@ -124,6 +125,7 @@ jobs:
           name: windows-mingw
           path: |
             windows/build/ZwCredProv.dll
+            windows/build/ZwCredSvc.exe
             windows/build/zwsetup.exe
             windows/build/zwsetup-gui.exe
           if-no-files-found: error

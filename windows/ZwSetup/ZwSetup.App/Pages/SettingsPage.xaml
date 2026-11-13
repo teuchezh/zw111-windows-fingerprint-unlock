@@ -49,6 +49,18 @@
         </ui:CardControl>
 
         <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="ShieldKeyhole24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Cu_Title], Source={x:Static core:L.I}}" />
+                    <TextBlock Style="{StaticResource CardDesc}" Text="{Binding [Cu_Desc], Source={x:Static core:L.I}}" />
+                    <TextBlock x:Name="CuState" Style="{StaticResource CardDesc}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <ui:ToggleSwitch x:Name="CuSwitch" Click="CredUi_Click" />
+        </ui:CardControl>
+
+        <ui:CardControl Style="{StaticResource Card}">
             <ui:CardControl.Icon><ui:SymbolIcon Symbol="ArrowDownload24" /></ui:CardControl.Icon>
             <ui:CardControl.Header>
                 <StackPanel>

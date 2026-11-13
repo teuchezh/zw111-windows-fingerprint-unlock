@@ -23,6 +23,7 @@ public partial class SettingsPage : Page
             VersionText.Text = "v" + (typeof(SettingsPage).Assembly.GetName().Version?.ToString(3) ?? "");
             _loading = false;
             ReadFirmware();
+            ReadCredUi();
             Shell.I.DeviceChanged += ReadFirmware;
         };
         Unloaded += (_, _) => Shell.I.DeviceChanged -= ReadFirmware;
@@ -52,6 +53,35 @@ public partial class SettingsPage : Page
     }
 
     void Remove_Click(object sender, RoutedEventArgs e) => Shell.I.Run(() => Shell.I.Ops.RemoveConfig());
+
+    // ---------- Windows Security prompts ----------
+    void ReadCredUi()
+    {
+        var cfg = Config.Load(out bool exists);
+        CuSwitch.IsEnabled = exists && cfg.IsComplete;
+        Task.Run(() =>
+        {
+            var st = BrokerService.Query();
+            Dispatcher.Invoke(() =>
+            {
+                CuSwitch.IsChecked = cfg.CredUiEnabled && st == BrokerService.State.Running;
+                CuState.Text = L.F("Cu_State", L.S(st switch
+                {
+                    BrokerService.State.Running => "Cu_StateRunning",
+                    BrokerService.State.Stopped => "Cu_StateStopped",
+                    BrokerService.State.NotInstalled => "Cu_StateNone",
+                    _ => "Cu_StateOther",
+                }));
+            });
+        });
+    }
+
+    void CredUi_Click(object sender, RoutedEventArgs e)
+    {
+        bool on = CuSwitch.IsChecked == true;
+        Shell.I.Run(() => Shell.I.Ops.SetCredUi(on), refreshStatus: false);
+        Task.Run(async () => { await Task.Delay(300); while (Shell.I.Busy) await Task.Delay(300); Dispatcher.Invoke(ReadCredUi); });
+    }
 
     // ---------- firmware ----------
     Ops.FwState? _fw;

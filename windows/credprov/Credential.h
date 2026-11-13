@@ -22,7 +22,8 @@ class ZwProvider;
 // One tile: "Fingerprint". Owns the worker thread that talks to the device.
 class ZwCredential : public ICredentialProviderCredential3 {
 public:
-    ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const zw::Config& cfg);
+    // sidOverride: SID reported by the broker service (CredUI scenario), empty otherwise.
+    ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const zw::Config& cfg, const std::wstring& sidOverride = L"");
 
     // IUnknown
     IFACEMETHODIMP_(ULONG) AddRef() override { return InterlockedIncrement(&_cRef); }
@@ -66,6 +67,7 @@ public:
 private:
     virtual ~ZwCredential();
     void WorkerMain();
+    void BrokerWorker();     // CredUI: the SYSTEM service talks to the device for us
     void SetStatus(const std::wstring& s, bool notify);
     void NotifyProvider();
 

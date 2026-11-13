@@ -19,6 +19,8 @@ public sealed class Config
     public bool Enabled = true;
     public bool Debug;
     public string Lang = "auto";
+    public string UserSid = "";
+    public bool CredUiEnabled;
     public byte[] Blob = Array.Empty<byte>();
 
     public bool IsComplete => User.Length > 0 && Blob.Length > 0;
@@ -38,6 +40,8 @@ public sealed class Config
         c.Enabled = (k.GetValue("Enabled") is int e ? e : 1) != 0;
         c.Debug = (k.GetValue("Debug") is int d ? d : 0) != 0;
         c.Lang = k.GetValue("Lang") as string ?? "auto";
+        c.UserSid = k.GetValue("UserSid") as string ?? "";
+        c.CredUiEnabled = (k.GetValue("CredUiEnabled") is int cu ? cu : 0) != 0;
         c.Blob = k.GetValue("Blob") as byte[] ?? Array.Empty<byte>();
         return c;
     }
@@ -53,6 +57,8 @@ public sealed class Config
         k.SetValue("Enabled", Enabled ? 1 : 0, RegistryValueKind.DWord);
         k.SetValue("Debug", Debug ? 1 : 0, RegistryValueKind.DWord);
         k.SetValue("Lang", Lang);
+        if (UserSid.Length > 0) k.SetValue("UserSid", UserSid);
+        k.SetValue("CredUiEnabled", CredUiEnabled ? 1 : 0, RegistryValueKind.DWord);
         k.SetValue("Blob", Blob, RegistryValueKind.Binary);
         k.SetAccessControl(sec);   // re-apply in case the key existed with a permissive DACL
     }

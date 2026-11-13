@@ -19,6 +19,9 @@ X(CP_NOMATCH,          L"Палец не распознан, попробуйт�
 X(CP_MATCHED,          L"Отпечаток распознан, выполняется вход…", L"Fingerprint recognized, signing in…") \
 X(CP_NO_DEVICE,        L"Сканер не подключён", L"Scanner not connected") \
 X(CP_DEVICE_LOST,      L"Сканер отключён", L"Scanner disconnected") \
+X(CP_SVC_DOWN,         L"Служба ZwCredSvc не запущена: включите вход в окнах Windows Security в ZwSetup", L"The ZwCredSvc service is not running: enable sign-in in Windows Security prompts in ZwSetup") \
+X(CP_SVC_REFUSED,      L"Служба отказала: это окно или пользователь не разрешены", L"The service refused: this prompt or user is not allowed") \
+X(CP_FINGER_DENIED2,   L"Этот палец не разрешён для входа", L"This finger is not allowed to sign in") \
 X(CP_LOCKED_FMT,       L"Слишком много неверных попыток. Сканер заблокирован на %u с", L"Too many wrong fingers. The scanner is locked for %u s") \
 X(CP_CFG_ERROR,        L"Ошибка конфигурации: ", L"Configuration error: ") \
 X(CP_FINGER_DENIED,    L"Этот палец не разрешён для входа", L"This finger is not allowed to sign in") \
