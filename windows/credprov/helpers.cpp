@@ -1,6 +1,5 @@
 #define SECURITY_WIN32
 #include "helpers.h"
-#include <math.h>
 #include <wincred.h>
 #include <shlwapi.h>
 #include <security.h>
@@ -107,21 +106,15 @@ HRESULT FieldDescriptorCoAllocCopy(const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR& r
     return S_OK;
 }
 
-// A simple generated tile: dark circle with a lighter ring, 128x128, 32bpp.
+// The app icon (128x128, premultiplied alpha) as a 32bpp top-down DIB for the sign-in tile.
+#include "tile_icon.h"
 HBITMAP CreateTileBitmap() {
-    const int W = 128, H = 128;
+    const int N = ZW_TILE_ICON_SIZE;
     BITMAPINFO bi = {}; bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    bi.bmiHeader.biWidth = W; bi.bmiHeader.biHeight = -H; bi.bmiHeader.biPlanes = 1; bi.bmiHeader.biBitCount = 32; bi.bmiHeader.biCompression = BI_RGB;
+    bi.bmiHeader.biWidth = N; bi.bmiHeader.biHeight = -N; bi.bmiHeader.biPlanes = 1; bi.bmiHeader.biBitCount = 32; bi.bmiHeader.biCompression = BI_RGB;
     void* bits = nullptr;
     HBITMAP hbm = CreateDIBSection(nullptr, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
     if (!hbm) return nullptr;
-    DWORD* px = (DWORD*)bits;
-    for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
-        float dx = x - 63.5f, dy = y - 63.5f; float r = sqrtf(dx * dx + dy * dy);
-        DWORD c = 0x00303B4A; // background
-        if (r < 56) c = 0x00245C8F;                      // disc
-        for (int ring = 10; ring <= 46; ring += 12) if (r > ring - 2 && r < ring + 2) c = 0x00E8F1FA; // "fingerprint" rings
-        px[y * W + x] = c;
-    }
+    memcpy(bits, kTileIconBgra, sizeof(kTileIconBgra));
     return hbm;
 }

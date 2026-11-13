@@ -35,6 +35,12 @@
  *   ENROLL <id>                       [BOOTSEL]  -> ENROLL PLACE / ENROLL REMOVE / ENROLL AGAIN / OK ENROLL <id>
  *   DELETE <id>                       [BOOTSEL]  -> OK
  *   COUNT                         -> COUNT <n>
+ *   VERSION                       -> VERSION <semver> <board: pico | yd_rp2040 | esp32s3>
+ *   SLOTS                         -> SLOTS <capacity> <hex bitmap, bit n = template n is present>
+ *   BOOTLOADER                        [BOOTSEL]  -> OK BOOTLOADER, then the board reboots into its USB bootloader
+ *   While waiting for a finger the device may also send:
+ *     LOCKED <sec>   too many wrong fingers; the sensor is ignored for <sec> seconds
+ *     READY          the lockout is over, waiting again
  *   LEDINFO                       -> LEDINFO <3C|35|NONE>    (which LED command the sensor accepted)
  *   LEDGET                        -> LED <ev> <mode> <color> <speed> <count> (x5), LEDWAITLIGHT <sec>, OK
  *   LEDSET <ev> <mode> <color> <speed> <count>  -> OK      (saved to flash)
@@ -50,6 +56,7 @@
  */
 
 #include <Arduino.h>
+#include <stdio.h>
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
 #include "sha256.h"
@@ -69,6 +76,18 @@
 #define HAS_LED         1        // ring LED via command 0x3C (ZW series) or 0x35 (R503); set 0 if none
 #endif
 #define AUTH_TIMEOUT_MS 0UL      // 0 = wait for a finger until CANCEL or until the host closes the port
+#define FW_VERSION      "1.1.0"
+#ifndef ZW_BOARD                 // reported by VERSION so the setup app picks the right update image
+  #if defined(ESP32)
+    #define ZW_BOARD "esp32s3"
+  #elif defined(ZW_PRESENCE_PIN)
+    #define ZW_BOARD "yd_rp2040"
+  #else
+    #define ZW_BOARD "pico"
+  #endif
+#endif
+#define LOCKOUT_AFTER   5        // wrong fingers in a row before the sensor is locked
+#define LOCKOUT_MS      30000UL  // lock duration; every further wrong finger locks again
 #define ENROLL_STEP_MS  30000UL
 
 // ---------------- platform glue ----------------
@@ -230,6 +249,85 @@ static void sensorInit() {
     if (g_sensorOk) { finger.getParameters(); finger.getTemplateCount(); ledDetect(); ledIdle(); }
 }
 
+// ---------------- no reboot-to-bootloader from software ----------------
+// The Arduino-Pico core reboots into the UF2 bootloader when a host opens the port at 1200 baud. Any program
+// on the PC could use that to flash firmware that reads the keys without a finger. The linker wraps the
+// TinyUSB callback (-Wl,--wrap=tud_cdc_line_coding_cb in platformio.ini) and 1200 baud is turned into 115200.
+// Firmware updates go through the BOOTLOADER command, which needs the physical button.
+#if defined(ARDUINO_ARCH_RP2040) && defined(ZW_BLOCK_1200BPS_RESET)
+extern "C" {
+struct zw_line_coding { uint32_t bit_rate; uint8_t stop_bits, parity, data_bits; } __attribute__((packed));
+void __real_tud_cdc_line_coding_cb(uint8_t itf, const void* lc);
+void __wrap_tud_cdc_line_coding_cb(uint8_t itf, const void* lc) {
+    zw_line_coding c;
+    memcpy(&c, lc, sizeof(c));
+    if (c.bit_rate == 1200) c.bit_rate = 115200;
+    __real_tud_cdc_line_coding_cb(itf, &c);
+}
+}
+#endif
+
+// ---------------- wrong-finger lockout ----------------
+// The streak is kept in flash, so unplugging the board does not reset it.
+struct FailStore { uint32_t magic; uint16_t streak; uint16_t reserved; };
+static const uint32_t kFailMagic = 0x3146575A; // "ZWF1"
+static const int kFailEepromOffset = 200;
+static uint16_t g_failStreak = 0;
+static bool     g_locked = false;
+static uint32_t g_lockStart = 0;
+
+static void saveFail() {
+    FailStore f = { kFailMagic, g_failStreak, 0 };
+    EEPROM.put(kFailEepromOffset, f);
+    EEPROM.commit();
+}
+static void loadFail() {
+    FailStore f; EEPROM.get(kFailEepromOffset, f);
+    g_failStreak = (f.magic == kFailMagic) ? f.streak : 0;
+    if (g_failStreak >= LOCKOUT_AFTER) { g_locked = true; g_lockStart = millis(); }   // power cycling does not skip it
+}
+static uint32_t lockRemainingSec() {
+    uint32_t el = millis() - g_lockStart;
+    return el >= LOCKOUT_MS ? 0 : (LOCKOUT_MS - el + 999) / 1000;
+}
+static void sendLocked() { Serial.print("LOCKED "); Serial.println(lockRemainingSec()); }
+
+// ---------------- template index ----------------
+// ReadIndexTable (0x1F) returns a 32-byte bitmap per page of 256 templates.
+static bool readIndexPage(uint8_t page, uint8_t out[32]) {
+    uint8_t cmd[] = { 0x1F, page };
+    Adafruit_Fingerprint_Packet packet(FINGERPRINT_COMMANDPACKET, sizeof(cmd), cmd);
+    finger.writeStructuredPacket(packet);
+    if (finger.getStructuredPacket(&packet, 500) != FINGERPRINT_OK) return false;
+    if (packet.type != FINGERPRINT_ACKPACKET || packet.data[0] != FINGERPRINT_OK) return false;
+    memcpy(out, packet.data + 1, 32);
+    return true;
+}
+
+static void cmdSlots() {
+    uint16_t cap = finger.capacity ? finger.capacity : 200;
+    if (cap > 1024) cap = 1024;
+    static uint8_t bits[128];
+    uint16_t bytes = (cap + 7) / 8;
+    memset(bits, 0, sizeof(bits));
+    bool ok = true;
+    for (uint8_t page = 0; page * 256 < cap && ok; page++) {
+        uint8_t buf[32];
+        ok = readIndexPage(page, buf);
+        if (ok) for (int i = 0; i < 32 && page * 32 + i < bytes; i++) bits[page * 32 + i] = buf[i];
+    }
+    if (!ok) {
+        // Fallback for sensors without 0x1F: probe every slot (slow, about 30 ms per slot).
+        memset(bits, 0, sizeof(bits));
+        for (uint16_t id = 0; id < cap; id++)
+            if (finger.loadModel(id) == FINGERPRINT_OK) bits[id / 8] |= (uint8_t)(1 << (id % 8));
+    }
+    char hex[3];
+    Serial.print("SLOTS "); Serial.print(cap); Serial.print(" ");
+    for (uint16_t i = 0; i < bytes; i++) { snprintf(hex, sizeof(hex), "%02x", bits[i]); Serial.print(hex); }
+    Serial.print("\n");
+}
+
 // ---------------- protocol state ----------------
 enum State { IDLE, WAITING };
 static State    g_state = IDLE;
@@ -307,6 +405,13 @@ static void handleLine(char* line) {
         if (!g_sensorOk) { sendErr("NOSENSOR"); return; }
         finger.getTemplateCount();
         Serial.print("COUNT "); Serial.println(finger.templateCount);
+        return;
+    }
+    if (!strcmp(cmd, "VERSION")) { Serial.print("VERSION " FW_VERSION " "); Serial.println(ZW_BOARD); return; }
+    if (!strcmp(cmd, "SLOTS")) {
+        if (!g_sensorOk) { sendErr("NOSENSOR"); return; }
+        if (g_state == WAITING) { sendErr("BUSY"); return; }
+        cmdSlots();
         return;
     }
     if (!strcmp(cmd, "LEDINFO")) {
@@ -397,13 +502,14 @@ static void handleLine(char* line) {
         g_authFailures = 0;
         g_state = WAITING;
         g_waitStart = millis();
-        ledWait();
         sendLine("OK WAIT");
+        if (g_locked) { ledIdle(); sendLocked(); }
+        else ledWait();
         return;
     }
 
     // ---- privileged commands: need physical presence ----
-    bool priv = !strcmp(cmd, "PROVISION") || !strcmp(cmd, "WIPE") || !strcmp(cmd, "ENROLL") || !strcmp(cmd, "DELETE");
+    bool priv = !strcmp(cmd, "PROVISION") || !strcmp(cmd, "WIPE") || !strcmp(cmd, "ENROLL") || !strcmp(cmd, "DELETE") || !strcmp(cmd, "BOOTLOADER");
     if (priv) {
         if (!PHYSICAL_PRESENCE()) { sendErr("PRESS_BOOTSEL"); return; }
         stopWaiting();
@@ -418,9 +524,22 @@ static void handleLine(char* line) {
             sendLine("OK PROVISIONED");
             return;
         }
+        if (!strcmp(cmd, "BOOTLOADER")) {
+#if defined(ARDUINO_ARCH_RP2040)
+            sendLine("OK BOOTLOADER");
+            Serial.flush();
+            ledIdle();
+            delay(200);
+            rp2040.rebootToBootloader();
+#else
+            sendErr("UNSUPPORTED");
+#endif
+            return;
+        }
         if (!strcmp(cmd, "WIPE")) {
             wipeStore();
             if (g_sensorOk) finger.emptyDatabase();
+            g_failStreak = 0; g_locked = false; saveFail();
             sendLine("OK WIPED");
             return;
         }
@@ -444,6 +563,13 @@ static void handleLine(char* line) {
 // Called every loop() while WAITING: polls the sensor, reports MATCH/NOMATCH/TIMEOUT.
 static void pollFinger() {
     if (AUTH_TIMEOUT_MS > 0 && millis() - g_waitStart > AUTH_TIMEOUT_MS) { stopWaiting(); sendLine("TIMEOUT"); return; }
+    if (g_locked) {
+        if (lockRemainingSec() > 0) return;          // ignore the sensor while locked
+        g_locked = false;
+        g_waitStart = millis();
+        sendLine("READY");
+        ledWait();
+    }
     // Light the ring only for the first waitLightSec seconds; keep waiting in the dark afterwards.
     bool lightWindow = g_led.waitLightSec == 0 || millis() - g_waitStart < (uint32_t)g_led.waitLightSec * 1000UL;
     if (g_waitLit && !lightWindow) ledIdle();
@@ -458,6 +584,7 @@ static void pollFinger() {
         char hex[65]; zw::bin2hex(wrapped, 32, hex);
         memset(mask, 0, sizeof(mask)); memset(wrapped, 0, sizeof(wrapped));
         uint16_t id = finger.fingerID, conf = finger.confidence;
+        if (g_failStreak) { g_failStreak = 0; saveFail(); }
         stopWaiting();                            // invalidates the nonce: one match per handshake
         ledOk();
         Serial.print("MATCH "); Serial.print(id); Serial.print(" "); Serial.print(conf);
@@ -466,6 +593,15 @@ static void pollFinger() {
     } else if (p == FINGERPRINT_NOTFOUND) {
         sendLine("NOMATCH");
         ledFail(); delay(600);
+        if (g_failStreak < 0xFFFF) g_failStreak++;
+        saveFail();
+        if (g_failStreak >= LOCKOUT_AFTER) {
+            g_locked = true; g_lockStart = millis();
+            ledIdle();
+            sendLocked();
+            waitImage(false, 3000);
+            return;
+        }
         // a wrong finger restarts the light window: someone is clearly at the PC
         g_waitStart = millis();
         ledWait();
@@ -480,6 +616,7 @@ void setup() {
     EEPROM.begin(256);
     loadStore();
     loadLed();
+    loadFail();
     sensorInit();
 }
 

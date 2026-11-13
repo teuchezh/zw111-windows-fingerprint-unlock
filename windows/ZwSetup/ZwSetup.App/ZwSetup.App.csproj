@@ -25,6 +25,10 @@
     <Resource Include="Assets\app.ico" />
     <Resource Include="Assets\icon-64.png" />
   </ItemGroup>
+  <!-- CI (or a local "pio run") drops firmware-<board>.uf2 and firmware-version.txt here; the app can then update the board. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Firmware\firmware-*.uf2;Firmware\firmware-version*.txt" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.0.5" />
     <ProjectReference Include="../ZwSetup.Core/ZwSetup.Core.csproj" />

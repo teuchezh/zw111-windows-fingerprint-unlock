@@ -12,6 +12,20 @@
             </ui:Button>
         </Grid>
 
+        <ui:CardControl x:Name="LogonFailCard" Style="{StaticResource Card}" Visibility="Collapsed" Margin="0,0,0,12">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="Warning24" Foreground="{DynamicResource SystemFillColorCautionBrush}" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [LogonFailed_Title], Source={x:Static core:L.I}}" />
+                    <TextBlock x:Name="LogonFailText" Style="{StaticResource CardDesc}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <StackPanel Orientation="Horizontal">
+                <ui:Button Appearance="Primary" Margin="0,0,8,0" Content="{Binding [LogonFailed_Fix], Source={x:Static core:L.I}}" Click="FixPassword_Click" />
+                <ui:Button Content="{Binding [LogonFailed_Dismiss], Source={x:Static core:L.I}}" Click="DismissFail_Click" />
+            </StackPanel>
+        </ui:CardControl>
+
         <ui:CardControl Style="{StaticResource Card}">
             <ui:CardControl.Icon><ui:SymbolIcon Symbol="Person24" /></ui:CardControl.Icon>
             <ui:CardControl.Header>

@@ -169,6 +169,24 @@ colours and a repeat count. "Preview" plays the effect for 3 seconds without sav
 "Light while waiting for at most" turns the ring off after that many seconds of waiting, for example when the
 lock screen stays up all night. A finger is still accepted, and a wrong finger turns the light back on.
 
+## Fingerprints, lockout and firmware updates
+
+- **Fingerprints page** lists the occupied slots of the sensor. Give each finger a name (stored on the PC),
+  delete it, or enroll a new one: it goes into the first free slot.
+- **Lockout.** After 5 wrong fingers in a row the sensor is ignored for 30 seconds, and every further wrong
+  finger locks it again. The counter lives in the board's flash, so unplugging the board does not reset it.
+  The sign-in tile shows how long to wait.
+- **Firmware update from the app.** Settings → "Board firmware" shows the board and app versions.
+  "Update" asks you to hold USR, reboots the board into its USB bootloader, copies the bundled UF2 and waits
+  for the board to come back. Keys, fingerprints and light settings are kept. "From file…" flashes any RP2040 UF2.
+  Boards with firmware older than 1.1 are switched into the bootloader by hand: unplug, hold BOOT, plug in.
+- **No silent reflashing.** The firmware blocks the Arduino-Pico "open the port at 1200 baud to reboot into the
+  bootloader" trick, so no program on the PC can reflash the board without the button. As a side effect
+  `pio run -t upload` can no longer reset the board: hold BOOT while plugging it in, or use the app.
+- **Rejected sign-in.** If Windows rejects the stored password (usually after a password change), the Status
+  page shows a warning with a "Change password" button.
+- The app refreshes the status by itself when the board is plugged in or out.
+
 ## Microsoft accounts and PIN sign-in
 
 If the sign-in screen offers a PIN and shows your full name, it is most likely a Microsoft account.

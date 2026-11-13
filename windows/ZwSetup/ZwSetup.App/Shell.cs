@@ -15,6 +15,8 @@ public sealed class Shell
     public event Action<string>? LogLine;
     public event Action<bool>? BusyChanged;
     public event Action? StatusChanged;
+    /// <summary>Raised (on the UI thread) after a COM port appeared or disappeared and the status was refreshed.</summary>
+    public event Action? DeviceChanged;
     public bool Busy { get; private set; }
     public Ops.StatusInfo? LastStatus { get; private set; }
 
@@ -62,4 +64,19 @@ public sealed class Shell
     }
 
     void SetBusy(bool b) { Busy = b; BusyChanged?.Invoke(b); }
+
+    System.Windows.Threading.DispatcherTimer? _debounce;
+    /// <summary>Called from the window's WM_DEVICECHANGE hook; waits for the port to settle, then refreshes.</summary>
+    public void OnDevicesChanged()
+    {
+        _debounce ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(1500), System.Windows.Threading.DispatcherPriority.Background, (_, _) =>
+        {
+            _debounce!.Stop();
+            if (Busy) { _debounce.Start(); return; }      // an operation owns the port: try again later
+            Log(L.S("DeviceListChanged"));
+            RefreshStatus();
+            Task.Run(async () => { await Task.Delay(300); while (Busy) await Task.Delay(200); Ui.Invoke(() => DeviceChanged?.Invoke()); });
+        }, Ui);
+        _debounce.Stop(); _debounce.Start();
+    }
 }

@@ -61,6 +61,16 @@ jobs:
       - name: Build
         working-directory: firmware
         run: pio run -e ${{ matrix.env }}
+      - name: Check that the 1200-baud reboot is blocked (RP2040)
+        if: matrix.env != 'esp32s3'
+        run: |
+          OBJDUMP=$(ls ~/.platformio/packages/toolchain-rp2040-earlephilhower/bin/arm-none-eabi-objdump)
+          "$OBJDUMP" -d firmware/.pio/build/${{ matrix.env }}/firmware.elf > /tmp/dis.txt
+          grep -q "<__wrap_tud_cdc_line_coding_cb>:" /tmp/dis.txt
+          wrapped=$(grep -cE "\sb(l|\.w)?\s+[0-9a-f]+ <__wrap_tud_cdc_line_coding_cb>" /tmp/dis.txt || true)
+          direct=$(grep -cE "\sb(l|\.w)?\s+[0-9a-f]+ <tud_cdc_line_coding_cb>" /tmp/dis.txt || true)
+          echo "calls through the wrapper: $wrapped; direct calls (only the wrapper itself may make one): $direct"
+          test "$wrapped" -ge 1 && test "$direct" -le 1
       - uses: actions/upload-artifact@v5
         with:
           name: firmware-${{ matrix.env }}
@@ -120,12 +130,28 @@ jobs:
 
   windows-app:
     name: Setup app (WPF-UI, .NET 8)
+    needs: [firmware]
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
+      - name: Bundle the RP2040 firmware into the app
+        uses: actions/download-artifact@v6
+        with:
+          pattern: firmware-*
+          path: fw
+      - name: Place firmware images and version
+        shell: pwsh
+        run: |
+          $dst = "windows/ZwSetup/ZwSetup.App/Firmware"
+          foreach ($b in "yd_rp2040", "pico") {
+            Copy-Item "fw/firmware-$b/firmware.uf2" "$dst/firmware-$b.uf2"
+          }
+          $v = (Select-String -Path firmware/src/main.cpp -Pattern '#define FW_VERSION\s+"([^"]+)"').Matches[0].Groups[1].Value
+          Set-Content -Path "$dst/firmware-version.txt" -Value $v -NoNewline
+          Get-ChildItem $dst
       - name: Publish self-contained single file
         run: dotnet publish windows/ZwSetup/ZwSetup.App -c Release --nologo -v q
       - name: Smoke-run the app (opens every page, both languages, both themes)

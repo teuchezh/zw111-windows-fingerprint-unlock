@@ -13,6 +13,7 @@ public record ComPortInfo(string Port, string HardwareId, string Name);
 /// <summary>Mode 1 breathing, 2 flashing, 3 on, 4 off, 5 fade in, 6 fade out; Color bit mask 1 blue, 2 green, 4 red.</summary>
 public record LedFx(int Mode, int Color, int Speed, int Count);
 public record LedConfig(Dictionary<string, LedFx> Fx, int WaitLightSec);
+public record FirmwareVersion(string Version, string Board);
 
 /// <summary>Text protocol over USB CDC, see firmware/src/main.cpp.</summary>
 public sealed class Device : IDisposable
@@ -173,10 +174,41 @@ public sealed class Device : IDisposable
                 return AuthResult.Match;
             }
             if (l == "NOMATCH") { onEvent?.Invoke("NOMATCH"); continue; }
+            if (l.StartsWith("LOCKED ") || l == "READY") { onEvent?.Invoke(l); continue; }
             if (l == "TIMEOUT") return AuthResult.Timeout;
             if (l.StartsWith("ERR ")) { err = l; return AuthResult.Error; }
         }
     }
+
+    // ---------- version, slots, bootloader ----------
+    /// <summary>"1.1.0 yd_rp2040" style answer, or null for firmware older than 1.1.</summary>
+    public FirmwareVersion? Version()
+    {
+        Purge(); Send("VERSION");
+        var l = Expect("VERSION ", 1500, out _);
+        if (l == null) return null;
+        var p = l.Substring(8).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return new FirmwareVersion(p.Length > 0 ? p[0] : "?", p.Length > 1 ? p[1] : "");
+    }
+
+    /// <summary>Occupied template slots, or null if the firmware does not support SLOTS.</summary>
+    public List<int>? Slots(out int capacity)
+    {
+        capacity = 0;
+        Purge(); Send("SLOTS");
+        var l = Expect("SLOTS ", 15000, out _);   // sensors without 0x1F are probed slot by slot
+        if (l == null) return null;
+        var p = l.Substring(6).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (p.Length < 2 || !int.TryParse(p[0], out capacity)) return null;
+        var bits = Convert.FromHexString(p[1]);
+        var list = new List<int>();
+        for (int id = 0; id < capacity && id / 8 < bits.Length; id++)
+            if ((bits[id / 8] & (1 << (id % 8))) != 0) list.Add(id);
+        return list;
+    }
+
+    /// <summary>Asks the board to reboot into its UF2 bootloader (button must be held).</summary>
+    public bool Bootloader(out string err) { Purge(); Send("BOOTLOADER"); return Expect("OK BOOTLOADER", 3000, out err) != null; }
 
     // ---------- ring LED ----------
     public static readonly string[] LedEvents = { "WAIT", "MATCH", "FAIL", "ENROLL", "IDLE" };

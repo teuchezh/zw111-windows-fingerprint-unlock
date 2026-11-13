@@ -84,6 +84,8 @@ static bool AuthGetKdev(SerialPort& port, const Secrets& s, uint8_t kdev[32]) {
     AuthResult r = RunAuth(port, s.kauth, cancel, kdev, id, &err, [](const std::string& ev) {
         if (ev == "WAIT") LogW(T(S::PLACE_FINGER));
         else if (ev == "NOMATCH") LogW(T(S::NOMATCH_RETRY));
+        else if (ev == "READY") LogW(T(S::PLACE_FINGER));
+        else if (ev.compare(0, 7, "LOCKED ") == 0) { wchar_t m[200]; _snwprintf(m, 200, T(S::LOCKED_FMT), (unsigned)atoi(ev.c_str() + 7)); LogW(m); }
     }, 60000);
     switch (r) {
     case AuthResult::Match: LogW(Ts(S::MATCH_ID) + N(id)); return true;

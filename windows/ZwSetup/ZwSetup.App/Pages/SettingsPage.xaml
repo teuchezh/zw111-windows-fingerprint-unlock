@@ -48,6 +48,20 @@
             <ui:ToggleSwitch x:Name="DebugSwitch" Click="Debug_Click" />
         </ui:CardControl>
 
+        <ui:CardControl Style="{StaticResource Card}">
+            <ui:CardControl.Icon><ui:SymbolIcon Symbol="ArrowDownload24" /></ui:CardControl.Icon>
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Fw_Title], Source={x:Static core:L.I}}" />
+                    <TextBlock x:Name="FwText" Style="{StaticResource CardDesc}" />
+                </StackPanel>
+            </ui:CardControl.Header>
+            <StackPanel Orientation="Horizontal">
+                <ui:Button x:Name="FwUpdateBtn" Appearance="Primary" Margin="0,0,8,0" Content="{Binding [Fw_Update], Source={x:Static core:L.I}}" Click="FwUpdate_Click" />
+                <ui:Button Content="{Binding [Fw_FromFile], Source={x:Static core:L.I}}" Click="FwFile_Click" />
+            </StackPanel>
+        </ui:CardControl>
+
         <TextBlock Style="{StaticResource SectionTitle}" Text=" " />
         <ui:CardControl Style="{StaticResource Card}">
             <ui:CardControl.Icon><ui:SymbolIcon Symbol="Delete24" /></ui:CardControl.Icon>

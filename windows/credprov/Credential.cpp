@@ -147,6 +147,18 @@ IFACEMETHODIMP ZwCredential::ReportResult(NTSTATUS ntsStatus, NTSTATUS ntsSubsta
                                           CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) {
     *ppwszOptionalStatusText = nullptr; *pcpsiOptionalStatusIcon = CPSI_NONE;
     Log(L"ReportResult: status=0x%08x sub=0x%08x", ntsStatus, ntsSubstatus);
+    // Leave a note for ZwSetup: a rejected logon usually means the Windows password changed.
+    HKEY k;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kRegPath, 0, KEY_SET_VALUE | KEY_WOW64_64KEY, &k) == ERROR_SUCCESS) {
+        if (ntsStatus == 0) { RegDeleteValueW(k, L"LastLogonError"); RegDeleteValueW(k, L"LastLogonErrorTime"); }
+        else {
+            DWORD st = (DWORD)ntsStatus; FILETIME ft; GetSystemTimeAsFileTime(&ft);
+            ULONGLONG t = ((ULONGLONG)ft.dwHighDateTime << 32) | ft.dwLowDateTime;
+            RegSetValueExW(k, L"LastLogonError", 0, REG_DWORD, (const BYTE*)&st, sizeof(st));
+            RegSetValueExW(k, L"LastLogonErrorTime", 0, REG_QWORD, (const BYTE*)&t, sizeof(t));
+        }
+        RegCloseKey(k);
+    }
     {
         std::lock_guard<std::mutex> g(_mtx);
         _matched = false;
@@ -222,6 +234,12 @@ void ZwCredential::WorkerMain() {
             [this](const std::string& ev) {
                 if (ev == "WAIT") SetStatus(T(S::CP_TOUCH), true);
                 else if (ev == "NOMATCH") SetStatus(T(S::CP_NOMATCH), true);
+                else if (ev == "READY") SetStatus(T(S::CP_TOUCH), true);
+                else if (ev.compare(0, 7, "LOCKED ") == 0) {
+                    wchar_t msg[160];
+                    StringCchPrintfW(msg, 160, T(S::CP_LOCKED_FMT), (unsigned)atoi(ev.c_str() + 7));
+                    SetStatus(msg, true);
+                }
             });
         if (_stop) break;
         switch (r) {

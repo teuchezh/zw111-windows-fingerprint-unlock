@@ -102,6 +102,7 @@ AuthResult RunAuth(SerialPort& port, const uint8_t kauth[32], std::atomic<bool>&
             return AuthResult::Match;
         }
         if (line == "NOMATCH") { if (onEvent) onEvent("NOMATCH"); continue; }
+        if (line.compare(0, 7, "LOCKED ") == 0 || line == "READY") { if (onEvent) onEvent(line); continue; }
         if (line == "TIMEOUT") return AuthResult::Timeout;
         if (line.compare(0, 4, "ERR ") == 0) { if (err) *err = line; return AuthResult::Error; }
     }

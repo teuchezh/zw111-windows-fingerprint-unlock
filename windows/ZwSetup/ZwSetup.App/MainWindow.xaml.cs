@@ -17,6 +17,18 @@ public partial class MainWindow
             BusyRing.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
             Nav.IsEnabled = !busy;
         };
+        SourceInitialized += (_, _) =>
+        {
+            // COM-port arrival/removal is broadcast to top-level windows as WM_DEVICECHANGE.
+            var src = (System.Windows.Interop.HwndSource)PresentationSource.FromVisual(this);
+            src.AddHook((IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) =>
+            {
+                const int WM_DEVICECHANGE = 0x0219, DBT_DEVICEARRIVAL = 0x8000, DBT_DEVICEREMOVECOMPLETE = 0x8004, DBT_DEVNODES_CHANGED = 0x0007;
+                if (msg == WM_DEVICECHANGE && (wParam.ToInt32() is DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE or DBT_DEVNODES_CHANGED))
+                    Shell.I.OnDevicesChanged();
+                return IntPtr.Zero;
+            });
+        };
         Loaded += (_, _) =>
         {
             Nav.Navigate(typeof(StatusPage));

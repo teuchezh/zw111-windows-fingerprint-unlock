@@ -19,6 +19,7 @@ X(CP_NOMATCH,          L"Палец не распознан, попробуйт�
 X(CP_MATCHED,          L"Отпечаток распознан, выполняется вход…", L"Fingerprint recognized, signing in…") \
 X(CP_NO_DEVICE,        L"Сканер не подключён", L"Scanner not connected") \
 X(CP_DEVICE_LOST,      L"Сканер отключён", L"Scanner disconnected") \
+X(CP_LOCKED_FMT,       L"Слишком много неверных попыток. Сканер заблокирован на %u с", L"Too many wrong fingers. The scanner is locked for %u s") \
 X(CP_CFG_ERROR,        L"Ошибка конфигурации: ", L"Configuration error: ") \
 X(CP_FINGER_DENIED,    L"Этот палец не разрешён для входа", L"This finger is not allowed to sign in") \
 X(CP_KEY_MISMATCH,     L"Устройство не соответствует этому ПК. Повторите шаг 1 в zwsetup-gui.", L"This device does not match this PC. Repeat step 1 in zwsetup-gui.") \
@@ -39,6 +40,7 @@ X(HOLD_BUTTON,         L"Зажмите и держите кнопку USR (ил
 X(HOLD_BUTTON_ENTER,   L"Зажмите и держите кнопку USR (или BOOT) на плате, затем нажмите Enter...", L"Press and hold the USR (or BOOT) button on the board, then press Enter...") \
 X(PLACE_FINGER,        L"Приложите палец к сканеру...", L"Place your finger on the scanner...") \
 X(NOMATCH_RETRY,       L"Палец не распознан, ещё раз.", L"Finger not recognized, try again.") \
+X(LOCKED_FMT,          L"Слишком много неверных попыток, сканер заблокирован на %u с.", L"Too many wrong fingers, the scanner is locked for %u s.") \
 X(MATCH_ID,            L"Совпадение: палец #", L"Match: finger #") \
 X(ERR_COMM,            L"Ошибка связи с устройством: ", L"Device communication error: ") \
 X(ERR_NOT_PROVISIONED, L"Устройство не настроено: выполните шаг 1.", L"The device is not provisioned: run step 1.") \
