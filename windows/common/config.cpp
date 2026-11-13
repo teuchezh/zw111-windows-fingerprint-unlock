@@ -33,14 +33,20 @@ std::wstring A2W(const std::string& s) {
 
 // ---------- logging ----------
 static bool g_logOn = false;
+static bool g_logUser = false;
 void LogEnable(bool on) { g_logOn = on; }
+void LogToUserProfile() { g_logUser = true; }
 void Log(const wchar_t* fmt, ...) {
     if (!g_logOn) return;
     wchar_t dir[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, dir))) return;
+    if (FAILED(SHGetFolderPathW(nullptr, g_logUser ? CSIDL_LOCAL_APPDATA : CSIDL_COMMON_APPDATA, nullptr, 0, dir))) return;
     std::wstring path = std::wstring(dir) + L"\\ZwCredProv";
     CreateDirectoryW(path.c_str(), nullptr);
-    path += L"\\zwcredprov.log";
+    path += g_logUser ? L"\\credui.log" : L"\\zwcredprov.log";
+    if (g_logUser) {       // keep it small: start over past 256 KB
+        WIN32_FILE_ATTRIBUTE_DATA fa;
+        if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fa) && fa.nFileSizeLow > 256 * 1024) DeleteFileW(path.c_str());
+    }
     FILE* f = _wfopen(path.c_str(), L"a, ccs=UTF-8");
     if (!f) return;
     SYSTEMTIME st; GetLocalTime(&st);

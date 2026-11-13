@@ -60,6 +60,9 @@ std::wstring A2W(const std::string& s);
 
 // Debug log to %ProgramData%\ZwCredProv\zwcredprov.log (only if cfg.debug).
 void LogEnable(bool on);
+// Write the log to %LOCALAPPDATA%\ZwCredProv\credui.log instead (the CredUI scenario runs as the user,
+// who cannot append to the SYSTEM-owned log in ProgramData).
+void LogToUserProfile();
 void Log(const wchar_t* fmt, ...);
 
 } // namespace zw

@@ -33,10 +33,14 @@ IFACEMETHODIMP ZwProvider::QueryInterface(REFIID riid, void** ppv) {
 static const DWORD kCredUiGeneric = 0x1, kCredUiInCredOnly = 0x20, kCredUiEnumerateAdmins = 0x100, kCredUiPack32Wow = 0x10000000;
 
 IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, DWORD dwFlags) {
+    if (cpus == CPUS_CREDUI) { LogToUserProfile(); LogEnable(true); }   // always diagnose CredUI decisions
     Log(L"SetUsageScenario %d flags 0x%08x", (int)cpus, dwFlags);
     if (cpus == CPUS_CREDUI) {
         // Plain-text "generic" credentials, 32-bit packing, admin-only (UAC) and pre-filled prompts are not ours.
-        if (dwFlags & (kCredUiGeneric | kCredUiInCredOnly | kCredUiEnumerateAdmins | kCredUiPack32Wow)) return E_NOTIMPL;
+        if (dwFlags & (kCredUiGeneric | kCredUiInCredOnly | kCredUiEnumerateAdmins | kCredUiPack32Wow)) {
+            Log(L"CredUI: flags not supported, tile hidden");
+            return E_NOTIMPL;
+        }
         // Here the provider runs as the user: the SYSTEM service supplies the settings and the password.
         BrokerInfo info; std::string err;
         if (!BrokerQueryInfo(info, &err) || !info.enabled || info.user.empty()) {
@@ -44,7 +48,7 @@ IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO c
             return E_NOTIMPL;
         }
         SetLangFromSetting(info.lang);
-        LogEnable(info.debug);
+        Log(L"CredUI: broker ok, user %ls\\%ls sid %ls", info.domain.c_str(), info.user.c_str(), info.sid.c_str());
         Config c; c.user = info.user; c.domain = info.domain; c.userSid = info.sid; c.enabled = true; c.credUiEnabled = true;
         _cpus = cpus;
         if (!_cred) _cred = new ZwCredential(this, cpus, c, info.sid);
