@@ -61,6 +61,8 @@ public:
     void StopWorker();
     bool IsMatched();
     const std::wstring& UserSid() const { return _sid; }
+    // CredUI with CREDUIWIN_AUTHPACKAGE_ONLY asks for a specific LSA package; 0 = Negotiate.
+    void SetAuthPackage(ULONG pkg) { _authPackage = pkg; }
     void SetUserSid(const std::wstring& sid) { _sid = sid; }
     std::wstring QualifiedUser() const { return _domain + L"\\" + _cfg.user; }
 
@@ -82,6 +84,7 @@ private:
     std::wstring _status;
     std::wstring _password;                        // decrypted, only between MATCH and GetSerialization
     bool _matched = false;
+    ULONG _authPackage = 0;
     bool _hadError = false;
 
     std::thread _worker;

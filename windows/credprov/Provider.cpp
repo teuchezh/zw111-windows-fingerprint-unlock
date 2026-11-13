@@ -52,6 +52,7 @@ IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO c
         Config c; c.user = info.user; c.domain = info.domain; c.userSid = info.sid; c.enabled = true; c.credUiEnabled = true;
         _cpus = cpus;
         if (!_cred) _cred = new ZwCredential(this, cpus, c, info.sid);
+        if (_credUiPackage) _cred->SetAuthPackage(_credUiPackage);
         return S_OK;
     }
     switch (cpus) {
@@ -67,7 +68,26 @@ IFACEMETHODIMP ZwProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO c
     }
 }
 
-IFACEMETHODIMP ZwProvider::SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*) { return E_NOTIMPL; }
+// CredUI calls this with the package the caller insists on (CREDUIWIN_AUTHPACKAGE_ONLY) and, sometimes, a pre-filled
+// credential. Accepting it keeps our tile in the prompt; the KERB_INTERACTIVE_UNLOCK_LOGON layout we produce is also
+// what Kerberos and MSV1_0 take for interactive logons.
+IFACEMETHODIMP ZwProvider::SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION* pcpcs) {
+    if (_cpus != CPUS_CREDUI || !pcpcs) return E_NOTIMPL;
+    ULONG nego = 0, kerb = 0, msv = 0;
+    RetrieveAuthPackage("Negotiate", &nego);
+    RetrieveAuthPackage("Kerberos", &kerb);
+    RetrieveAuthPackage("MICROSOFT_AUTHENTICATION_PACKAGE_V1_0", &msv);
+    ULONG pkg = pcpcs->ulAuthenticationPackage;
+    Log(L"SetSerialization: package %lu (negotiate %lu, kerberos %lu, msv %lu), %lu bytes", pkg, nego, kerb, msv, pcpcs->cbSerialization);
+    if (pcpcs->clsidCredentialProvider != GUID_NULL && pcpcs->clsidCredentialProvider != CLSID_ZwCredentialProvider) {
+        Log(L"SetSerialization: serialization for another provider, ignored");
+        return S_OK;
+    }
+    if (pkg != nego && pkg != kerb && pkg != msv) { Log(L"SetSerialization: package not supported"); return E_INVALIDARG; }
+    _credUiPackage = pkg;
+    if (_cred) _cred->SetAuthPackage(pkg);
+    return S_OK;
+}
 
 IFACEMETHODIMP ZwProvider::Advise(ICredentialProviderEvents* pcpe, UINT_PTR upAdviseContext) {
     if (_pEvents) _pEvents->Release();

@@ -38,4 +38,5 @@ private:
     bool _userAllowed = true;      // configured user is present in the user array
     zw::Config _cfg;
     bool _cfgOk = false;
+    ULONG _credUiPackage = 0;      // LSA package requested by a CredUI caller
 };

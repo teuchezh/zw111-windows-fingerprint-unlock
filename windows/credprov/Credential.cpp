@@ -149,8 +149,8 @@ IFACEMETHODIMP ZwCredential::GetSerialization(CREDENTIAL_PROVIDER_GET_SERIALIZAT
     hr = KerbInteractiveUnlockLogonInit(&dom[0], &usr[0], pwzProtected, _cpus, &kiul);
     if (SUCCEEDED(hr)) hr = KerbInteractiveUnlockLogonPack(kiul, &pcpcs->rgbSerialization, &pcpcs->cbSerialization);
     if (SUCCEEDED(hr)) {
-        ULONG pkg = 0;
-        hr = RetrieveNegotiateAuthPackage(&pkg);
+        ULONG pkg = _authPackage;
+        hr = pkg ? S_OK : RetrieveNegotiateAuthPackage(&pkg);
         if (SUCCEEDED(hr)) {
             pcpcs->ulAuthenticationPackage = pkg;
             pcpcs->clsidCredentialProvider = CLSID_ZwCredentialProvider;

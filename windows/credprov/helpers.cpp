@@ -53,11 +53,13 @@ HRESULT KerbInteractiveUnlockLogonPack(const KERB_INTERACTIVE_UNLOCK_LOGON& rkiu
     return S_OK;
 }
 
-HRESULT RetrieveNegotiateAuthPackage(ULONG* pulAuthPackage) {
+HRESULT RetrieveNegotiateAuthPackage(ULONG* pulAuthPackage) { return RetrieveAuthPackage(NEGOSSP_NAME_A, pulAuthPackage); }
+
+HRESULT RetrieveAuthPackage(const char* pkgName, ULONG* pulAuthPackage) {
     HANDLE hLsa;
     NTSTATUS st = LsaConnectUntrusted(&hLsa);
     if (st != 0) return HRESULT_FROM_NT(st);
-    LSA_STRING name; char pkg[] = NEGOSSP_NAME_A;
+    LSA_STRING name; char pkg[64]; strncpy(pkg, pkgName, sizeof(pkg) - 1); pkg[sizeof(pkg) - 1] = 0;
     name.Buffer = pkg; name.Length = (USHORT)strlen(pkg); name.MaximumLength = name.Length + 1;
     ULONG pkgId = 0;
     st = LsaLookupAuthenticationPackage(hLsa, &name, &pkgId);
