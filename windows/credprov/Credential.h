@@ -7,12 +7,20 @@
 #include <thread>
 #include "../common/config.h"
 
+// Undocumented extension used by Windows 11 LogonUI: hands the tile image over as a PNG buffer, which keeps
+// its alpha channel (the HBITMAP from GetBitmapValue is drawn on a black square). Same ABI as Lithnet's
+// ICredentialProviderCredential3 {64A5010E-4363-41F8-9738-19045C20DABC}.
+struct ICredentialProviderCredential3 : public ICredentialProviderCredential2 {
+    virtual HRESULT STDMETHODCALLTYPE GetBitmapBufferValue(DWORD dwFieldID, DWORD* pImageBufferSize, BYTE** ppImageBuffer) = 0;
+};
+extern const IID IID_ICredentialProviderCredential3_ZW;
+
 enum FIELD_ID { FI_TILEIMAGE = 0, FI_LABEL = 1, FI_STATUS = 2, FI_SUBMIT = 3, FI_NUM_FIELDS = 4 };
 
 class ZwProvider;
 
 // One tile: "Fingerprint". Owns the worker thread that talks to the device.
-class ZwCredential : public ICredentialProviderCredential2 {
+class ZwCredential : public ICredentialProviderCredential3 {
 public:
     ZwCredential(ZwProvider* provider, CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, const zw::Config& cfg);
 
@@ -44,6 +52,8 @@ public:
                                 CREDENTIAL_PROVIDER_STATUS_ICON* pcpsiOptionalStatusIcon) override;
     // ICredentialProviderCredential2
     IFACEMETHODIMP GetUserSid(PWSTR* ppszSid) override;
+    // ICredentialProviderCredential3
+    IFACEMETHODIMP GetBitmapBufferValue(DWORD dwFieldID, DWORD* pImageBufferSize, BYTE** ppImageBuffer) override;
 
     // Called by the provider.
     void StartWorker();

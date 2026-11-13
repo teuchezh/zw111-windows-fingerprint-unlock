@@ -11,6 +11,8 @@
 
 using namespace zw;
 
+const IID IID_ICredentialProviderCredential3_ZW = { 0x64a5010e, 0x4363, 0x41f8, { 0x97, 0x38, 0x19, 0x04, 0x5c, 0x20, 0xda, 0xbc } };
+
 // Field GUIDs from credentialprovider.h (not present in every SDK)
 static const GUID kCpfgLogo  = { 0x2d837775, 0xf6cd, 0x464e, { 0xa7, 0x45, 0x48, 0x2f, 0xd0, 0xb4, 0x74, 0x93 } };
 static const GUID kCpfgLabel = { 0x286bbff3, 0xbad4, 0x438f, { 0xb0, 0x07, 0x79, 0xb7, 0x26, 0x7c, 0x3d, 0x48 } };
@@ -49,6 +51,7 @@ ZwCredential::~ZwCredential() {
 IFACEMETHODIMP ZwCredential::QueryInterface(REFIID riid, void** ppv) {
     if (riid == IID_IUnknown || riid == IID_ICredentialProviderCredential) *ppv = static_cast<ICredentialProviderCredential*>(this);
     else if (riid == IID_ICredentialProviderCredential2) *ppv = static_cast<ICredentialProviderCredential2*>(this);
+    else if (riid == IID_ICredentialProviderCredential3_ZW) *ppv = static_cast<ICredentialProviderCredential3*>(this);
     else { *ppv = nullptr; return E_NOINTERFACE; }
     AddRef(); return S_OK;
 }
@@ -91,6 +94,19 @@ IFACEMETHODIMP ZwCredential::GetBitmapValue(DWORD id, HBITMAP* phbmp) {
     if (id != FI_TILEIMAGE) return E_INVALIDARG;
     *phbmp = CreateTileBitmap();
     return *phbmp ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+}
+
+#include "tile_icon.h"
+IFACEMETHODIMP ZwCredential::GetBitmapBufferValue(DWORD dwFieldID, DWORD* pImageBufferSize, BYTE** ppImageBuffer) {
+    if (!pImageBufferSize || !ppImageBuffer) return E_POINTER;
+    *pImageBufferSize = 0; *ppImageBuffer = nullptr;
+    if (dwFieldID != FI_TILEIMAGE) return E_INVALIDARG;
+    BYTE* buf = (BYTE*)CoTaskMemAlloc(sizeof(kTilePng));
+    if (!buf) return E_OUTOFMEMORY;
+    memcpy(buf, kTilePng, sizeof(kTilePng));
+    *ppImageBuffer = buf; *pImageBufferSize = sizeof(kTilePng);
+    Log(L"GetBitmapBufferValue: %u bytes", (unsigned)sizeof(kTilePng));
+    return S_OK;
 }
 
 IFACEMETHODIMP ZwCredential::GetSubmitButtonValue(DWORD id, DWORD* pdwAdjacentTo) {
