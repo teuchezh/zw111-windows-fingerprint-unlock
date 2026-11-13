@@ -46,7 +46,7 @@ public partial class MainWindow
         int cards = 0;
         void Walk(DependencyObject d)
         {
-            if (d is Wpf.Ui.Controls.CardControl c)
+            if (d is Wpf.Ui.Controls.CardControl c && c.IsVisible)   // hidden cards (e.g. the rejected-logon note) are skipped
             {
                 cards++;
                 if (c.Template == null || c.Header is FrameworkElement h && !h.IsVisible)
